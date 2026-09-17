@@ -62,10 +62,16 @@ elmo-hikes/
 
 ## Contributors
 
+
+- **adriennes** - Aspires to become a software engineer after graduation. Her hobbies include swimming and digital drawing.
+
 - **Adrienne Salingbay** - Aspires to become a software engineer after graduation. My hobbies include swimming and digital drawing.
 - **Yuri Walker** - BCIT CST Student with two published games and poor sleep schedule
 
+
 **Louie Elizarde** BCIT CST Student apsiring to learn the foundations of software development. Fun Fact: I am interesed in game development.
+
+**Yuri** BCIT CST student who wants to learn game development and has released 2 video games.
 
 ---
 
