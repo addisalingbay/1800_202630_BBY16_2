@@ -66,6 +66,8 @@ elmo-hikes/
 
 **Louie Elizarde** BCIT CST Student apsiring to learn the foundations of software development. Fun Fact: I am interesed in game development.
 
+**Yuri** BCIT CST student who wants to learn game development and has released 2 video games.
+
 ---
 
 ## Acknowledgments
