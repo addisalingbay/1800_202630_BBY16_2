@@ -62,7 +62,7 @@ elmo-hikes/
 
 ## Contributors
 
-- **Your Name** - BCIT CST Student with a passion for outdoor adventures and user-friendly applications. Fun fact: Loves solving Rubik's Cubes in under a minute.
+- **Adrienne Salingbay** - Aspires to becomes a software engineer after graduation. My hobbies include swimming and digital drawing.
 - **Teammate Name** - BCIT CST Student, Frontend enthusiast with a knack for creative design. Fun fact: Has a collection of over 50 houseplants.
 
 **Louie Elizarde** BCIT CST Student apsiring to learn the foundations of software development. Fun Fact: I am interesed in game development.
