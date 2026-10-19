@@ -9,7 +9,7 @@
 // ---------------------------------------------------------
 
 // Import Firebase SDK modules (using Firebase v9 modular syntax)
-import { initializeApp } from "qfirebase/app";
+import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
 // ---------------------------------------------------------
