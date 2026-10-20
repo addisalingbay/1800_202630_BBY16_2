@@ -1,39 +1,8 @@
 
 .feed-width { max-width: 560px; }
 
-#for-you-page { padding-bottom: 6rem; }
-
-.brand { letter-spacing: .02em; }
-
-.icon-btn { color: var(--bs-body-color); text-decoration: none; line-height: 1; transition: color .15s ease; }
-.icon-btn:hover, .icon-btn:focus-visible { color: var(--bs-primary); }
-
-#bottom-nav .nav-link {
-  color: var(--bs-body-color);
-  font-size: 1.6rem;
-  padding: .75rem 1rem;
-  display: flex;
-  align-items: center;
-  transition: color .15s ease, background-color .15s ease;
-}
-#bottom-nav .nav-link span { font-size: 1rem; }
-#bottom-nav .nav-link:hover,
-#bottom-nav .nav-link:focus-visible,
-#bottom-nav .nav-link.active {
-  color: var(--bs-primary);
-  background-color: rgba(var(--bs-primary-rgb), .12);
-}
-
 .post-card .post-avatar {
   width: 40px; height: 40px; flex-shrink: 0;
   background-color: var(--bs-secondary-bg);
   border-radius: 50%;
 }
-.post-card .post-image { cursor: pointer; }
-.post-card .post-caption { cursor: pointer; }
-.post-card .post-actions .btn-link { color: var(--bs-body-color); }
-.post-card .post-actions .btn-link:hover,
-.post-card .post-header .btn-link:hover { color: var(--bs-primary); }
-.post-card .post-header .btn-link { color: var(--bs-body-color); }
-
-#post-overlay { height: 100% !important; }
