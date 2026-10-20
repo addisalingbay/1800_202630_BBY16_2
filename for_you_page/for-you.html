@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ScamMedia | For You</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="for-you.css" rel="stylesheet">
+</head>
+<body>
+
+  <header class="sticky-top bg-body border-bottom border-secondary-subtle" id="top-bar">
+    <div class="container feed-width d-flex align-items-center justify-content-between py-2">
+     
+      <a href="notifications.html" id="notification-btn" class="icon-btn fs-3" aria-label="Notifications">
+        <i class="bi bi-bell-fill"></i>
+      </a>
+      <span class="brand fs-5 fw-bold fst-italic text-secondary">SCAMMEDIA</span>
+      <button type="button" id="search-btn" class="icon-btn fs-3 btn btn-link p-0" aria-label="Search">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="container feed-width pt-3" id="for-you-page">
+
+    <h1 class="display-6 fw-bold mb-3" id="greeting">Hi <span id="greeting-username">[USERNAME_456]</span></h1>
+
+    <section id="post-feed" aria-label="For You feed"></section>
+
+    <div id="feed-sentinel" class="text-center py-4">
+      <div class="spinner-border text-secondary" role="status">
+        <span class="visually-hidden">Loading more posts...</span>
+      </div>
+    </div>
+  </main>
+
+  <nav class="navbar fixed-bottom bg-body-tertiary border-top border-secondary-subtle p-0" id="bottom-nav" aria-label="Main navigation">
+    <div class="container-fluid">
+      <ul class="navbar-nav flex-row w-100 justify-content-around">
+        <li class="nav-item">
+          <a class="nav-link active" id="nav-home" href="for-you.html">
+            <i class="bi bi-house-door"></i><span class="d-none d-md-inline ms-md-2">Home</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="nav-quizzes" href="quizzes.html">
+            <i class="bi bi-patch-question"></i><span class="d-none d-md-inline ms-md-2">Quizzes</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="nav-add-post" href="add-post.html">
+            <i class="bi bi-plus-square"></i><span class="d-none d-md-inline ms-md-2">Add Post</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="nav-saved" href="saved.html">
+            <i class="bi bi-bookmark"></i><span class="d-none d-md-inline ms-md-2">Saved</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="nav-settings" href="settings.html">
+            <i class="bi bi-gear"></i><span class="d-none d-md-inline ms-md-2">Settings</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="offcanvas offcanvas-bottom" tabindex="-1" id="post-overlay"
+       data-bs-backdrop="false" aria-labelledby="post-overlay-label">
+    <div class="offcanvas-header">
+      <button type="button" class="icon-btn btn btn-link fs-2 p-0" id="overlay-back-btn"
+              data-bs-dismiss="offcanvas" aria-label="Back to For You">
+        <i class="bi bi-arrow-left"></i>
+      </button>
+      <span class="visually-hidden" id="post-overlay-label">Post details</span>
+    </div>
+    <div class="offcanvas-body">
+      <div class="container feed-width">
+        <div class="ratio ratio-1x1 bg-secondary rounded-3" id="overlay-image" role="img" aria-label="Post image placeholder"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="for-you.js"></script>
+</body>
+</html>
