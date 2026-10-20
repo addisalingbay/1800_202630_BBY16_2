@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ScamMedia | For You</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="for-you.css" rel="stylesheet">
+</head>
+<body>
+
+  <main class="container feed-width py-3" id="for-you-page">
+    <!-- Firebase auth will fill in the username later -->
+    <h1 class="display-6 fw-bold mb-3" id="greeting">Hi <span id="greeting-username">[USERNAME_456]</span></h1>
+
+    <!-- Posts are injected here by for-you.js -->
+    <section id="post-feed" aria-label="For You feed"></section>
+
+    <!-- When this scrolls into view, more posts load -->
+    <div id="feed-sentinel" class="text-center py-4">
+      <div class="spinner-border text-secondary" role="status">
+        <span class="visually-hidden">Loading more posts...</span>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="for-you.js"></script>
+</body>
+</html>
