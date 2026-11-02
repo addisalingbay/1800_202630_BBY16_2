@@ -1,0 +1,12 @@
+.imgButton{
+  filter: invert(0.5);
+}
+
+#logoAvatar{
+  display: grid;
+  grid-template-columns: 1fr 4fr;
+}
+
+#description{
+  height: 400px;
+}

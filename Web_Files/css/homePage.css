@@ -2,3 +2,7 @@ h1 {
   font-size: 2rem;
 
 }
+
+.imgButton{
+  filter: invert(0.5);
+}
