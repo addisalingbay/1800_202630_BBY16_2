@@ -70,14 +70,14 @@
 
   <div id="topBar" class="row align-items-center">
 
-    <h1 id="mainHeading" class="text-center fw-bold col text-center text-nowrap">Create Post</h1>
+    <h1 id="mainHeading" class="text-center fw-bold col text-center text-nowrap my-4">Create Post</h1>
 
   </div>
 
-  <div class="container py-3">
+  <div class="container py-3 bg-white">
 
-    <form>
-      <div class="rounded-4 p-3">
+    <form id="createPost">
+      <div class="rounded-4 mb-4">
 
         <!-- Avatar + title -->
         <div id="logoAvatar" class="mb-4">
@@ -89,20 +89,31 @@
         <textarea id="description"class="form-control border-0 rounded-3 mb-2 post-body" placeholder="Whats on your mind..."></textarea>
 
         <!-- Tags label -->
-        <div class="fw-bold small mb-5"><p>Tags:</p></div>
+        <div id="preview"class="fw-bold small mb-5 d-flex gap-4" >
+          <div class="w-50">
+            <p>Tags:</p>
+            <div id="postTags"></div>
+          </div>
+          <div class="w-50">
+            <p>Images:</p>
+            <div id="postImage"></div>
+          </div>
+
+        </div>
 
         <!-- Action buttons -->
-        <div class="d-flex justify-content-between gap-2">
-          <button type="button" class="btn btn-light fw-bold rounded-3 flex-fill">Add tags</button>
-          <button type="button" class="btn btn-light fw-bold rounded-3 flex-fill">Add Images</button>
+        <div class="d-flex justify-content-between gap-4">
+          <button type="button" class="btn btn-light fw-bold rounded-3 flex-fill d-flex justify-content-center align-items-center gap-2 w-50" ><p class="mb-0">Add Tags</p><img src="../../images/tag.png" width="25"></button>
+          <button type="button" class="btn btn-light fw-bold rounded-3 flex-fill d-flex justify-content-center align-items-center gap-2 w-50"><p class="mb-0">Add Images</p><img src="../../images/image.png" width="25px"></button>
         </div>
       </div>
 
     </form>
 
     <!-- Post button, outside the card, right-aligned -->
-    <div class="d-flex justify-content-end mt-2">
-      <button type="submit" class="btn btn-secondary btn-lg fw-bold fs-3 px-4 post-btn">Post</button>
+    <div class="d-flex justify-content-end mt-2 gap-5">
+      <button type="submit" form="createPost" class="btn btn-secondary btn-lg fw-bold fs-2 px-4 post-btn w-50">Return</button>
+      <button class="btn btn-secondary btn-lg fw-bold fs-2 px-4 post-btn w-50">Post</button>
     </div>
 
   </div>
