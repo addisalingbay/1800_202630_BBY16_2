@@ -1,7 +1,5 @@
-
 const feed = document.getElementById('post-feed');
 const sentinel = document.getElementById('feed-sentinel');
-
 
 const PLACEHOLDER_USERS = ['USERNAME_123', 'USERNAME_204', 'USERNAME_377', 'USERNAME_512', 'USERNAME_689', 'USERNAME_741'];
 const PLACEHOLDER_TITLES = ['POST CAPTION', 'POST CAPTION', 'POST CAPTION'];
@@ -39,6 +37,7 @@ function makePlaceholderPost() {
     tags: ['Tag 1', 'Tag 1', 'Tag 1', 'Tag 1'],
     description: pick(PLACEHOLDER_DESCRIPTIONS),
     imageUrl: hasPhoto ? '' : null,
+
     createdAt: minutesAgo(pick([0, 1, 4, 12, 45, 95, 300, 1500, 4000]))
   };
 }
@@ -119,6 +118,7 @@ function renderPost(post) {
   const preview = `<p class="post-preview small mb-0">${escapeHtml(post.description)}</p>`;
 
   if (post.imageUrl === null) {
+
     card.innerHTML = `
       ${header}
       <div class="card-body pt-1 pb-2">
@@ -126,6 +126,7 @@ function renderPost(post) {
         <div class="mt-2">${actionsHtml()}</div>
       </div>`;
   } else {
+
     card.innerHTML = `
       ${header}
       ${imageHtml(post, 'ratio-16x9')}
@@ -157,6 +158,7 @@ function updateTimestamps() {
 }
 
 setInterval(updateTimestamps, 60 * 1000);
+
 document.addEventListener('visibilitychange', () => { if (!document.hidden) updateTimestamps(); });
 
 const overlay = document.getElementById('post-details');
@@ -167,7 +169,7 @@ const commentsList = document.getElementById('comments-list');
 const commentsCount = document.getElementById('comments-count');
 const commentsEmpty = document.getElementById('comments-empty');
 
-let lastTrigger = null;   
+let lastTrigger = null;
 
 function renderPostDetails(post) {
   const hasPhoto = post.imageUrl !== null;
@@ -208,7 +210,7 @@ function setupDescription(toggle) {
   const isExpandable = () => body.scrollHeight > collapsedHeight() + 2;
 
   function apply() {
-    if (!isExpandable()) {                
+    if (!isExpandable()) {
       body.style.height = 'auto';
       body.classList.remove('is-fading');
       toggle.classList.add('is-static');
@@ -226,7 +228,7 @@ function setupDescription(toggle) {
   function flip() {
     if (!isExpandable()) return;
     expanded = !expanded;
-    apply();                                
+    apply();
   }
 
   toggle.addEventListener('click', flip);
@@ -307,7 +309,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 feed.addEventListener('click', (e) => {
-  if (e.target.closest('.post-action')) return;  
+  if (e.target.closest('.post-action')) return;
   const card = e.target.closest('.post-card');
   if (card) openPostDetails(card.id, card);
 });
