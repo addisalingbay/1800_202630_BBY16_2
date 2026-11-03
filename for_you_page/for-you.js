@@ -34,7 +34,7 @@ function makePlaceholderPost() {
     id: 'post-' + postCounter + '-' + Math.random().toString(36).slice(2, 7),
     username: pick(PLACEHOLDER_USERS),
     title: pick(PLACEHOLDER_TITLES),
-    tags: ['Tag 1', 'Tag 1', 'Tag 1', 'Tag 1'],
+    tags: ['Tag 1', 'Tag 2', 'Tag 3', 'Tag 4'],
     description: pick(PLACEHOLDER_DESCRIPTIONS),
     imageUrl: hasPhoto ? '' : null,
 
