@@ -1,12 +1,25 @@
-.imgButton{
+.imgButton {
   filter: invert(0.5);
 }
 
-#logoAvatar{
+#logoAvatar {
   display: grid;
   grid-template-columns: 1fr 4fr;
 }
 
-#description{
-  height: 350px;
+#description {
+  height: 40vh;
+  max-height: 350px;
+  min-height: 150px;
 }
+
+body {
+  padding-bottom: 100px;
+}
+
+#preview {
+  width: 25px;
+  height: 25px;
+}
+
+#preview:hover {}

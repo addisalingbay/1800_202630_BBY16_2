@@ -20,12 +20,12 @@
 
 
 
-  <nav class="navbar navbar-expand navbar-dark fixed-bottom py-0" >
-    <div class="container-fluid">
+  <nav class="navbar navbar-expand navbar-dark fixed-bottom py-0">
+    <div class="container-fluid bg-dark">
 
       <ul class="navbar-nav nav-fill w-100">
         <li class="nav-item mx-1">
-          <a class="nav-link" href="#">
+          <a class="nav-link" href="../html/homePage.html">
             <figure class="justify-content-center align-items-center d-flex flex-column mb-0">
               <img src="../../images/home.png" class="img-fluid imgButton" width="40px">
               <p>Home</p>
@@ -74,37 +74,47 @@
 
   </div>
 
-  <div class="container py-3 bg-white">
+  <div class="container py-3">
 
-    <form id="createPost">
-      <div class="rounded-4 mb-4">
+    <form id="createPost" class="bg-light rounded-4 p-4">
+      <div class="rounded-4 mb-4 ">
 
-        <!-- Avatar + title -->
+
         <div id="logoAvatar" class="mb-4">
           <img src="../../images/logo.jpg" width="50px">
-          <input type="text" class="form-control border-0 rounded-3" placeholder="Title...">
+          <input type="text" id="title" class="form-control border-0 rounded-3" placeholder="Title...">
         </div>
 
-        <!-- Body -->
-        <textarea id="description"class="form-control border-0 rounded-3 mb-2 post-body" placeholder="Whats on your mind..."></textarea>
 
-        <!-- Tags label -->
-        <div id="preview"class="fw-bold small mb-5 d-flex gap-4" >
+        <textarea id="description" class="form-control border-0 rounded-3 mb-2 post-body"
+          placeholder="Whats on your mind..." style="height: 40vh"></textarea>
+
+
+        <div id="preview" class="fw-bold small mb-5 d-flex gap-4">
           <div class="w-50">
             <p>Tags:</p>
             <div id="postTags"></div>
           </div>
           <div class="w-50">
             <p>Images:</p>
-            <div id="postImage"></div>
+            <div id="postImage">
+              <img src="../../images/image.png" width="25px">
+            </div>
           </div>
 
         </div>
 
-        <!-- Action buttons -->
+        <!-- Action  -->
         <div class="d-flex justify-content-between gap-4">
-          <button type="button" class="btn btn-light fw-bold rounded-3 flex-fill d-flex justify-content-center align-items-center gap-2 w-50" ><p class="mb-0">Add Tags</p><img src="../../images/tag.png" width="25"></button>
-          <button type="button" class="btn btn-light fw-bold rounded-3 flex-fill d-flex justify-content-center align-items-center gap-2 w-50"><p class="mb-0">Add Images</p><img src="../../images/image.png" width="25px"></button>
+          <button type="button" id="AddTagsButton"
+            class="btn btn-light fw-bold rounded-3 flex-fill d-flex justify-content-center align-items-center gap-2 w-50">
+            <p class="mb-0">Add Tags</p><img src="../../images/tag.png" width="25">
+          </button>
+          <button type="button" id="addImagesButton"
+            class="btn btn-light fw-bold rounded-4 flex-fill d-flex justify-content-center align-items-center gap-2 w-50">
+            <p class="mb-0">Add Images</p><img src="../../images/image.png" width="25px">
+          </button>
+          <input type="file" id="fileInput" accept="image/*" hidden>
         </div>
       </div>
 
@@ -112,21 +122,23 @@
 
     <!-- Post button, outside the card, right-aligned -->
     <div class="d-flex justify-content-end mt-2 gap-5">
-      <button type="submit" form="createPost" class="btn btn-secondary btn-lg fw-bold fs-2 px-4 post-btn w-50">Return</button>
+      <button type="submit" form="createPost"
+        class="btn btn-secondary btn-lg fw-bold fs-2 px-4 post-btn w-50">Return</button>
       <button class="btn btn-secondary btn-lg fw-bold fs-2 px-4 post-btn w-50">Post</button>
     </div>
 
   </div>
 
+  <div id="preview" hidden></div>
 
 
-  <script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-1a/pXj49ZQ1aHEmrJ+gMw1otqoVsYwlEnlD8mIfY2TV03r20Y0CN7uqx1tQogjPL"
-    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script type="module" src="../js/app.js"></script>
   <script type="module" src="../js/createPost.js"></script>
-  <script type="module" src="../js/main.js"></script>
+
+
+
 </body>
 
 
