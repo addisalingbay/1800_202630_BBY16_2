@@ -12,14 +12,12 @@
 <body>
 
   <main class="container feed-width py-3" id="for-you-page">
-    <h1 class="display-6 fw-bold mb-3" id="greeting">Hi <span id="greeting-username">[USERNAME_456]</span></h1>
+    <h1 class="display-6 fw-bold mb-3" id="greeting">Hi <span id="greeting-username">there</span></h1>
 
     <section id="post-feed" aria-label="For You feed"></section>
 
-    <div id="feed-sentinel" class="text-center py-4">
-      <div class="spinner-border text-secondary" role="status">
-        <span class="visually-hidden">Loading more posts...</span>
-      </div>
+    <div id="feed-sentinel" class="text-center py-4" aria-live="polite">
+      <span class="visually-hidden">Loading posts...</span>
     </div>
   </main>
 

@@ -1,17 +1,39 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Comments are scoped to a specific post. Only authenticated users can
-    // read them or create new ones; comments cannot be edited or deleted
-    // through the client.
-    match /posts/{postId}/comments/{commentId} {
-      allow read: if request.auth != null;
+    function signedIn() {
+      return request.auth != null;
+    }
 
-      allow create: if request.auth != null
+    function validPost() {
+      return request.resource.data.keys().hasAll([
+          'uid', 'username', 'title', 'description', 'tags', 'imageUrl', 'createdAt'
+        ])
         && request.resource.data.keys().hasOnly([
+          'uid', 'username', 'title', 'description', 'tags', 'imageUrl', 'createdAt'
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.username is string
+        && request.resource.data.username.size() > 0
+        && request.resource.data.username.size() <= 80
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 160
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 10000
+        && request.resource.data.tags is list
+        && request.resource.data.tags.size() <= 10
+        && (request.resource.data.imageUrl == null
+          || (request.resource.data.imageUrl is string
+            && request.resource.data.imageUrl.size() <= 2048))
+        && request.resource.data.createdAt == request.time;
+    }
+
+    function validComment() {
+      return request.resource.data.keys().hasAll([
           'uid', 'username', 'text', 'createdAt'
         ])
-        && request.resource.data.keys().hasAll([
+        && request.resource.data.keys().hasOnly([
           'uid', 'username', 'text', 'createdAt'
         ])
         && request.resource.data.uid == request.auth.uid
@@ -22,8 +44,23 @@ service cloud.firestore {
         && request.resource.data.text.size() > 0
         && request.resource.data.text.size() <= 1000
         && request.resource.data.createdAt == request.time;
+    }
 
+    match /posts/{postId} {
+      // Signed-in users can read feed posts. Only the authenticated creator
+      // can create a post whose uid matches their own Firebase Auth UID.
+      allow read: if signedIn();
+      allow create: if signedIn() && validPost();
+      // Editing/deleting is intentionally disabled until those features are added.
       allow update, delete: if false;
+
+      match /comments/{commentId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && exists(/databases/$(database)/documents/posts/$(postId))
+          && validComment();
+        allow update, delete: if false;
+      }
     }
   }
 }
