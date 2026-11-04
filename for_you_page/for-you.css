@@ -22,7 +22,8 @@
 
 .post-image img { object-fit: cover; }
 
-.post-details {
+.post-details,
+.comments-overlay {
   position: fixed;
   inset: 0;
   z-index: 1055;
@@ -31,7 +32,10 @@
   visibility: hidden;
   transition: transform .4s cubic-bezier(.32, .72, 0, 1), visibility 0s linear .4s;
 }
-.post-details.is-open {
+.comments-overlay { z-index: 1060; }
+
+.post-details.is-open,
+.comments-overlay.is-open {
   transform: translateY(0);
   visibility: visible;
   transition: transform .4s cubic-bezier(.32, .72, 0, 1), visibility 0s linear 0s;
@@ -39,10 +43,38 @@
 
 body.post-details-open { overflow: hidden; }
 
-.post-details-scroll {
+.post-details-scroll,
+.comments-overlay-scroll {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.overlay-header {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr 2.5rem;
+  align-items: center;
+}
+
+.comment-launch-bar { cursor: pointer; }
+.comment-launch-bar #comment-launch { cursor: pointer; }
+
+.comment-textarea {
+  resize: none;
+  max-height: 8rem;
+  overflow-y: auto;
+  border-radius: 1rem;
+}
+
+.comment-text {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.comment-bar .post-avatar {
+  background-color: var(--bs-secondary);
+  background-size: cover;
+  background-position: center;
 }
 
 .comment-bar { padding-bottom: calc(.5rem + env(safe-area-inset-bottom, 0px)) !important; }
@@ -71,6 +103,8 @@ body.post-details-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .post-details,
   .post-details.is-open,
+  .comments-overlay,
+  .comments-overlay.is-open,
   .post-description-body,
   .post-description-body::after { transition-duration: 0s !important; transition-delay: 0s !important; }
 }

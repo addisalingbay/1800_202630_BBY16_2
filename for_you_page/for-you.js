@@ -2,6 +2,8 @@ const feed = document.getElementById('post-feed');
 const sentinel = document.getElementById('feed-sentinel');
 
 const PLACEHOLDER_USERS = ['USERNAME_123', 'USERNAME_204', 'USERNAME_377', 'USERNAME_512', 'USERNAME_689', 'USERNAME_741'];
+const CURRENT_USERNAME = 'USERNAME_456';
+const CURRENT_USER_AVATAR_URL = '';
 const PLACEHOLDER_TITLES = ['POST CAPTION', 'POST CAPTION', 'POST CAPTION'];
 const PLACEHOLDER_DESCRIPTIONS = [
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam dignissim massa et metus commodo, vel dictum mauris viverra. Vivamus fermentum vel sapien eu accumsan. Quisque a ex sed orci fringilla feugiat vel vel quam.\n\nInterdum et malesuada fames ac ante ipsum primis in faucibus. Aenean sed ullamcorper dolor, ut interdum quam. Suspendisse at varius sem.',
@@ -34,7 +36,7 @@ function makePlaceholderPost() {
     id: 'post-' + postCounter + '-' + Math.random().toString(36).slice(2, 7),
     username: pick(PLACEHOLDER_USERS),
     title: pick(PLACEHOLDER_TITLES),
-    tags: ['Tag 1', 'Tag 1', 'Tag 1', 'Tag 1'],
+    tags: ['Tag 1', 'Tag 2', 'Tag 3', 'Tag 4'],
     description: pick(PLACEHOLDER_DESCRIPTIONS),
     imageUrl: hasPhoto ? '' : null,
 
@@ -79,11 +81,17 @@ function tagsHtml(tags) {
     `<span class="badge rounded-pill text-bg-secondary fw-normal">${escapeHtml(t)}</span>`).join('')}</div>`;
 }
 
-function actionsHtml() {
+function setUserAvatar(url) {
+  document.querySelectorAll('.user-avatar').forEach((el) => {
+    el.style.backgroundImage = url ? 'url(' + JSON.stringify(url) + ')' : '';
+  });
+}
+
+function actionsHtml(opensComments = false) {
   return `
     <div class="d-flex gap-3 fs-5">
       <button type="button" class="btn btn-link text-body p-0 lh-1 post-action" aria-label="Like"><i class="bi bi-heart"></i></button>
-      <button type="button" class="btn btn-link text-body p-0 lh-1 post-action" aria-label="Comments"><i class="bi bi-chat-square-text"></i></button>
+      <button type="button" class="btn btn-link text-body p-0 lh-1 post-action" aria-label="Comments"${opensComments ? ' data-open-comments' : ''}><i class="bi bi-chat-square-text"></i></button>
       <button type="button" class="btn btn-link text-body p-0 lh-1 post-action" aria-label="Share"><i class="bi bi-share"></i></button>
     </div>`;
 }
@@ -169,6 +177,20 @@ const commentsList = document.getElementById('comments-list');
 const commentsCount = document.getElementById('comments-count');
 const commentsEmpty = document.getElementById('comments-empty');
 
+const commentsOverlay = document.getElementById('comments-overlay');
+const commentsBack = document.getElementById('comments-back');
+const commentsOverlayScroll = document.getElementById('comments-overlay-scroll');
+const commentsOverlayList = document.getElementById('comments-overlay-list');
+const commentsOverlayEmpty = document.getElementById('comments-overlay-empty');
+const commentTextarea = document.getElementById('comment-textarea');
+const commentSend = document.getElementById('comment-send');
+const commentLaunchBar = document.getElementById('comment-launch-bar');
+const commentLaunch = document.getElementById('comment-launch');
+
+const commentsByPostId = new Map();
+let activePostId = null;
+let commentsTrigger = null;
+
 let lastTrigger = null;
 
 function renderPostDetails(post) {
@@ -186,7 +208,7 @@ function renderPostDetails(post) {
         ${tagsHtml(post.tags)}
       </div>
       ${hasPhoto ? imageHtml(post, 'ratio-1x1') : ''}
-      <div class="px-3 py-2">${actionsHtml()}</div>
+      <div class="px-3 py-2">${actionsHtml(true)}</div>
       <div class="post-description-toggle px-3 pb-3" role="button" tabindex="0" aria-expanded="false">
         <div class="post-description-body small">${escapeHtml(post.description)}</div>
         <div class="post-description-hint small text-body-secondary mt-1">Show more</div>
@@ -247,7 +269,7 @@ window.addEventListener('resize', () => {
 function renderComment(comment) {
   const el = document.createElement('div');
   el.className = 'comment bg-body-secondary rounded-3 p-3';
-  el.id = comment.id;
+  el.dataset.commentId = comment.id;
   el.innerHTML = `
     <div class="d-flex align-items-center gap-2 mb-1">
       <div class="post-avatar post-avatar-sm"></div>
@@ -255,7 +277,7 @@ function renderComment(comment) {
       ${timeHtml(comment.createdAt, 'small text-body-secondary')}
       <button type="button" class="btn btn-link text-body p-0 fs-6 lh-1 post-action" aria-label="Like comment"><i class="bi bi-heart"></i></button>
     </div>
-    <p class="small mb-0">${escapeHtml(comment.text)}</p>`;
+    <p class="comment-text small mb-0">${escapeHtml(comment.text)}</p>`;
   return el;
 }
 
@@ -263,28 +285,136 @@ function updateCommentsMeta() {
   const count = commentsList.children.length;
   commentsCount.textContent = count;
   commentsEmpty.classList.toggle('d-none', count > 0);
+  commentsOverlayEmpty.classList.toggle('d-none', count > 0);
+}
+
+function sortNewestFirst(comments) {
+  return [...comments].sort((a, b) => b.createdAt - a.createdAt);
+}
+
+function getComments(postId) {
+  if (!commentsByPostId.has(postId)) {
+    commentsByPostId.set(postId, sortNewestFirst(loadCommentsForPost(postId)));
+  }
+  return commentsByPostId.get(postId);
 }
 
 function renderComments(comments) {
-  commentsList.replaceChildren();
-  [...comments]
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .forEach((c) => commentsList.appendChild(renderComment(c)));
+  [commentsList, commentsOverlayList].forEach((list) => {
+    list.replaceChildren(...comments.map(renderComment));
+  });
   updateCommentsMeta();
 }
 
-function addComment(comment) {
-  commentsList.prepend(renderComment(comment));
+function receiveComment(postId, comment) {
+  const comments = getComments(postId);
+  if (comments.some((c) => c.id === comment.id)) return;
+
+  let index = comments.findIndex((c) => c.createdAt <= comment.createdAt);
+  if (index === -1) index = comments.length;
+  comments.splice(index, 0, comment);
+
+  if (postId !== activePostId) return;
+  [commentsList, commentsOverlayList].forEach((list) => {
+    list.insertBefore(renderComment(comment), list.children[index] || null);
+  });
   updateCommentsMeta();
 }
+
+async function saveComment(postId, comment) {
+  return comment;
+}
+
+function makeCommentId() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'comment-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+}
+
+function resizeCommentBox() {
+  commentTextarea.style.height = 'auto';
+  const borders = commentTextarea.offsetHeight - commentTextarea.clientHeight;
+  commentTextarea.style.height = (commentTextarea.scrollHeight + borders) + 'px';
+}
+
+function syncCommentBox() {
+  resizeCommentBox();
+  commentSend.disabled = !commentTextarea.value.trim();
+}
+
+async function submitComment() {
+  const text = commentTextarea.value.trim();
+  if (!text || !activePostId) return;
+
+  const postId = activePostId;
+  const comment = { id: makeCommentId(), username: CURRENT_USERNAME, text, createdAt: new Date() };
+
+  commentTextarea.value = '';
+  syncCommentBox();
+  receiveComment(postId, comment);
+  commentsOverlayScroll.scrollTo({ top: 0, behavior: 'smooth' });
+
+  try {
+    await saveComment(postId, comment);
+  } catch (error) {
+    console.error('Could not save comment', error);
+  }
+}
+
+commentTextarea.addEventListener('input', syncCommentBox);
+commentSend.addEventListener('click', submitComment);
+window.addEventListener('resize', () => {
+  if (commentsOverlay.classList.contains('is-open')) resizeCommentBox();
+});
+
+function openCommentsOverlay(triggerEl) {
+  if (!activePostId) return;
+
+  commentsTrigger = triggerEl || null;
+  overlay.inert = true;
+  commentsOverlay.inert = false;
+  commentsOverlay.setAttribute('aria-hidden', 'false');
+  commentsOverlayScroll.scrollTop = 0;
+  commentsOverlay.classList.add('is-open');
+  resizeCommentBox();
+  commentsBack.focus({ preventScroll: true });
+}
+
+function closeCommentsOverlay() {
+  commentsOverlay.classList.remove('is-open');
+  commentsOverlay.setAttribute('aria-hidden', 'true');
+  commentsOverlay.inert = true;
+  overlay.inert = false;
+  if (commentsTrigger) commentsTrigger.focus({ preventScroll: true });
+}
+
+commentsBack.addEventListener('click', closeCommentsOverlay);
+
+detailsPost.addEventListener('click', (e) => {
+  const trigger = e.target.closest('[data-open-comments]');
+  if (trigger) openCommentsOverlay(trigger);
+});
+
+commentLaunchBar.addEventListener('click', (e) => {
+  if (e.target.closest('.post-action')) return;
+  openCommentsOverlay(commentLaunch);
+});
+commentLaunch.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    openCommentsOverlay(commentLaunch);
+  }
+});
 
 function openPostDetails(postId, triggerEl) {
   const post = postsById.get(postId);
   if (!post) return;
 
   lastTrigger = triggerEl || null;
+  activePostId = post.id;
+  commentTextarea.value = '';
+  syncCommentBox();
   renderPostDetails(post);
-  renderComments(loadCommentsForPost(post.id));
+  renderComments(getComments(post.id));
   detailsScroll.scrollTop = 0;
   updateTimestamps();
 
@@ -296,6 +426,8 @@ function openPostDetails(postId, triggerEl) {
 }
 
 function closePostDetails() {
+  if (commentsOverlay.classList.contains('is-open')) closeCommentsOverlay();
+  activePostId = null;
   overlay.classList.remove('is-open');
   overlay.setAttribute('aria-hidden', 'true');
   overlay.inert = true;
@@ -305,7 +437,9 @@ function closePostDetails() {
 
 backButton.addEventListener('click', closePostDetails);
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && overlay.classList.contains('is-open')) closePostDetails();
+  if (e.key !== 'Escape') return;
+  if (commentsOverlay.classList.contains('is-open')) closeCommentsOverlay();
+  else if (overlay.classList.contains('is-open')) closePostDetails();
 });
 
 feed.addEventListener('click', (e) => {
@@ -322,3 +456,5 @@ feed.addEventListener('keydown', (e) => {
 
 loadPosts(5);
 observer.observe(sentinel);
+
+setUserAvatar(CURRENT_USER_AVATAR_URL);
