@@ -3,6 +3,10 @@ h1 {
 
 }
 
+.imgButton {
+  filter: invert(0.5);
+}
+
 #forYouMount {
   padding-bottom: 8rem;
 }
