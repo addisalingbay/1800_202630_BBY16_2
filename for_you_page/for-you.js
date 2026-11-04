@@ -1,8 +1,11 @@
+import { collection, addDoc, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../Web_Files/js/firebaseConfig.js';
+import { onAuthStateChanged } from 'firebase/auth';
+
 const feed = document.getElementById('post-feed');
 const sentinel = document.getElementById('feed-sentinel');
 
 const PLACEHOLDER_USERS = ['USERNAME_123', 'USERNAME_204', 'USERNAME_377', 'USERNAME_512', 'USERNAME_689', 'USERNAME_741'];
-const CURRENT_USERNAME = 'USERNAME_456';
 const CURRENT_USER_AVATAR_URL = '';
 const PLACEHOLDER_TITLES = ['POST CAPTION', 'POST CAPTION', 'POST CAPTION'];
 const PLACEHOLDER_DESCRIPTIONS = [
@@ -37,7 +40,7 @@ function makePlaceholderPost() {
     username: pick(PLACEHOLDER_USERS),
     title: pick(PLACEHOLDER_TITLES),
     tags: ['Tag 1', 'Tag 2', 'Tag 3', 'Tag 4'],
-    description: pick(PLACEHOLDER_DESCRIPTIONS),
+    description: PLACEHOLDER_DESCRIPTIONS[(postCounter - 1) % PLACEHOLDER_DESCRIPTIONS.length],
     imageUrl: hasPhoto ? '' : null,
 
     createdAt: minutesAgo(pick([0, 1, 4, 12, 45, 95, 300, 1500, 4000]))
@@ -187,7 +190,6 @@ const commentSend = document.getElementById('comment-send');
 const commentLaunchBar = document.getElementById('comment-launch-bar');
 const commentLaunch = document.getElementById('comment-launch');
 
-const commentsByPostId = new Map();
 let activePostId = null;
 let commentsTrigger = null;
 
@@ -288,17 +290,6 @@ function updateCommentsMeta() {
   commentsOverlayEmpty.classList.toggle('d-none', count > 0);
 }
 
-function sortNewestFirst(comments) {
-  return [...comments].sort((a, b) => b.createdAt - a.createdAt);
-}
-
-function getComments(postId) {
-  if (!commentsByPostId.has(postId)) {
-    commentsByPostId.set(postId, sortNewestFirst(loadCommentsForPost(postId)));
-  }
-  return commentsByPostId.get(postId);
-}
-
 function renderComments(comments) {
   [commentsList, commentsOverlayList].forEach((list) => {
     list.replaceChildren(...comments.map(renderComment));
@@ -306,29 +297,61 @@ function renderComments(comments) {
   updateCommentsMeta();
 }
 
-function receiveComment(postId, comment) {
-  const comments = getComments(postId);
-  if (comments.some((c) => c.id === comment.id)) return;
+let commentsUnsubscribe = null;
+let currentUser = null;
 
-  let index = comments.findIndex((c) => c.createdAt <= comment.createdAt);
-  if (index === -1) index = comments.length;
-  comments.splice(index, 0, comment);
+function stopCommentsListener() {
+  if (commentsUnsubscribe) {
+    commentsUnsubscribe();
+    commentsUnsubscribe = null;
+  }
+}
 
-  if (postId !== activePostId) return;
-  [commentsList, commentsOverlayList].forEach((list) => {
-    list.insertBefore(renderComment(comment), list.children[index] || null);
+function startCommentsListener(postId) {
+  stopCommentsListener();
+
+  if (!currentUser) {
+    renderComments([]);
+    return;
+  }
+
+  const commentsRef = collection(db, 'posts', postId, 'comments');
+  const commentsQuery = query(commentsRef, orderBy('createdAt', 'desc'));
+
+  commentsUnsubscribe = onSnapshot(commentsQuery, (snapshot) => {
+    const comments = snapshot.docs.map((commentDoc) => {
+      const data = commentDoc.data();
+      return {
+        id: commentDoc.id,
+        username: data.username || 'User',
+        text: data.text,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date()
+      };
+    });
+
+    if (activePostId === postId) renderComments(comments);
+  }, (error) => {
+    console.error('Could not load comments from Firestore:', error);
+    if (activePostId === postId) renderComments([]);
   });
-  updateCommentsMeta();
 }
 
-async function saveComment(postId, comment) {
-  return comment;
+async function saveComment(postId, text) {
+  if (!currentUser) {
+    throw new Error('You must be signed in to post a comment.');
+  }
+
+  const username = currentUser.displayName || currentUser.email || 'User';
+  const commentsRef = collection(db, 'posts', postId, 'comments');
+
+  await addDoc(commentsRef, {
+    uid: currentUser.uid,
+    username,
+    text,
+    createdAt: serverTimestamp()
+  });
 }
 
-function makeCommentId() {
-  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-  return 'comment-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
-}
 
 function resizeCommentBox() {
   commentTextarea.style.height = 'auto';
@@ -338,25 +361,30 @@ function resizeCommentBox() {
 
 function syncCommentBox() {
   resizeCommentBox();
-  commentSend.disabled = !commentTextarea.value.trim();
+  commentSend.disabled = !commentTextarea.value.trim() || !currentUser;
 }
 
 async function submitComment() {
   const text = commentTextarea.value.trim();
-  if (!text || !activePostId) return;
+  if (!text || !activePostId || commentSend.disabled) return;
+
+  if (!currentUser) {
+    window.alert('Please sign in before posting a comment.');
+    return;
+  }
 
   const postId = activePostId;
-  const comment = { id: makeCommentId(), username: CURRENT_USERNAME, text, createdAt: new Date() };
-
-  commentTextarea.value = '';
-  syncCommentBox();
-  receiveComment(postId, comment);
-  commentsOverlayScroll.scrollTo({ top: 0, behavior: 'smooth' });
+  commentSend.disabled = true;
 
   try {
-    await saveComment(postId, comment);
+    await saveComment(postId, text);
+    commentTextarea.value = '';
+    commentsOverlayScroll.scrollTo({ top: 0, behavior: 'smooth' });
   } catch (error) {
     console.error('Could not save comment', error);
+    window.alert(error?.message || 'Your comment could not be saved. Please try again.');
+  } finally {
+    syncCommentBox();
   }
 }
 
@@ -414,7 +442,8 @@ function openPostDetails(postId, triggerEl) {
   commentTextarea.value = '';
   syncCommentBox();
   renderPostDetails(post);
-  renderComments(getComments(post.id));
+  renderComments([]);
+  startCommentsListener(post.id);
   detailsScroll.scrollTop = 0;
   updateTimestamps();
 
@@ -452,6 +481,12 @@ feed.addEventListener('keydown', (e) => {
     e.preventDefault();
     openPostDetails(e.target.id, e.target);
   }
+});
+
+onAuthStateChanged(auth, (user) => {
+  currentUser = user;
+  syncCommentBox();
+  if (activePostId) startCommentsListener(activePostId);
 });
 
 loadPosts(5);

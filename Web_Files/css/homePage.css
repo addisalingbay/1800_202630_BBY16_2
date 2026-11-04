@@ -2,3 +2,11 @@ h1 {
   font-size: 2rem;
 
 }
+
+#forYouMount {
+  padding-bottom: 8rem;
+}
+
+.navbar.fixed-bottom {
+  background-color: var(--bs-secondary-bg);
+}
