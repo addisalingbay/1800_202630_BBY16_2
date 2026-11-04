@@ -3,6 +3,14 @@ h1 {
 
 }
 
-.imgButton{
+.imgButton {
   filter: invert(0.5);
+}
+
+#forYouMount {
+  padding-bottom: 8rem;
+}
+
+.navbar.fixed-bottom {
+  background-color: var(--bs-secondary-bg);
 }
