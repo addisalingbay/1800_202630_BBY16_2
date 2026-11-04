@@ -1,3 +1,7 @@
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, LOGIN_PAGE } from './firebase-init.js';
+import { subscribeToFolders, subscribeToSavedPosts } from './bookmarks-db.js';
+
 const folderGrid = document.getElementById('folder-grid');
 const foldersEmpty = document.getElementById('folders-empty');
 
@@ -8,16 +12,6 @@ const folderScroll = document.getElementById('folder-scroll');
 const folderPosts = document.getElementById('folder-posts');
 const folderEmpty = document.getElementById('folder-empty');
 
-function loadFolders() {
-  return [1, 2, 3, 4].map((n) => ({ id: 'folder-' + n, name: 'FOLDER (' + n + ')', coverUrl: '' }));
-}
-
-function loadSavedPostsForFolder(folderId) {
-  const counts = { 'folder-1': 9, 'folder-2': 9, 'folder-3': 6, 'folder-4': 3 };
-  const total = counts[folderId] ?? 9;
-  return Array.from({ length: total }, (_, i) => ({ id: folderId + '-post-' + (i + 1), thumbnailUrl: '' }));
-}
-
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (c) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
@@ -27,6 +21,9 @@ function escapeHtml(value) {
 const foldersById = new Map();
 let openFolderId = null;
 let lastTrigger = null;
+let currentUser = null;
+let stopFolders = () => {};
+let stopSavedPosts = () => {};
 
 function renderFolder(folder) {
   foldersById.set(folder.id, folder);
@@ -46,11 +43,6 @@ function renderFolders(folders) {
   foldersById.clear();
   folderGrid.replaceChildren(...folders.map(renderFolder));
   foldersEmpty.classList.toggle('d-none', folders.length > 0);
-}
-
-function addFolder(folder) {
-  folderGrid.appendChild(renderFolder(folder));
-  foldersEmpty.classList.add('d-none');
 }
 
 function renderSavedPost(post) {
@@ -74,12 +66,6 @@ function renderSavedPosts(posts) {
   updateFolderEmptyState();
 }
 
-function addSavedPost(folderId, post) {
-  if (folderId !== openFolderId) return;
-  folderPosts.prepend(renderSavedPost(post));
-  updateFolderEmptyState();
-}
-
 function openFolder(folderId, triggerEl) {
   const folder = foldersById.get(folderId);
   if (!folder) return;
@@ -87,7 +73,10 @@ function openFolder(folderId, triggerEl) {
   openFolderId = folderId;
   lastTrigger = triggerEl || null;
   folderTitle.textContent = folder.name;
-  renderSavedPosts(loadSavedPostsForFolder(folderId));
+  folderPosts.replaceChildren();
+  folderEmpty.classList.add('d-none');
+  stopSavedPosts();
+  stopSavedPosts = subscribeToSavedPosts(currentUser.uid, folderId, renderSavedPosts);
   folderScroll.scrollTop = 0;
 
   overlay.inert = false;
@@ -99,6 +88,8 @@ function openFolder(folderId, triggerEl) {
 
 function closeFolder() {
   openFolderId = null;
+  stopSavedPosts();
+  stopSavedPosts = () => {};
   overlay.classList.remove('is-open');
   overlay.setAttribute('aria-hidden', 'true');
   overlay.inert = true;
@@ -116,4 +107,12 @@ folderGrid.addEventListener('click', (e) => {
   if (tile) openFolder(tile.dataset.folderId, tile);
 });
 
-renderFolders(loadFolders());
+onAuthStateChanged(auth, (user) => {
+  stopFolders();
+  if (!user) {
+    window.location.href = LOGIN_PAGE;
+    return;
+  }
+  currentUser = user;
+  stopFolders = subscribeToFolders(user.uid, renderFolders);
+});

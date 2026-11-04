@@ -1,14 +1,13 @@
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db, LOGIN_PAGE } from './firebase-init.js';
+import { fetchPostsPage, subscribeToNewPosts } from './posts-db.js';
+
 const feed = document.getElementById('post-feed');
 const sentinel = document.getElementById('feed-sentinel');
+const feedEmpty = document.getElementById('feed-empty');
 
 const PLACEHOLDER_USERS = ['USERNAME_123', 'USERNAME_204', 'USERNAME_377', 'USERNAME_512', 'USERNAME_689', 'USERNAME_741'];
-const PLACEHOLDER_TITLES = ['POST CAPTION', 'POST CAPTION', 'POST CAPTION'];
-const PLACEHOLDER_DESCRIPTIONS = [
-  'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam dignissim massa et metus commodo, vel dictum mauris viverra. Vivamus fermentum vel sapien eu accumsan. Quisque a ex sed orci fringilla feugiat vel vel quam.\n\nInterdum et malesuada fames ac ante ipsum primis in faucibus. Aenean sed ullamcorper dolor, ut interdum quam. Suspendisse at varius sem.',
-  'Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Integer posuere erat a ante venenatis dapibus posuere velit aliquet. Donec ullamcorper nulla non metus auctor fringilla.\n\nCras mattis consectetur purus sit amet fermentum. Aenean lacinia bibendum nulla sed consectetur. Maecenas faucibus mollis interdum.',
-  'Cras mattis consectetur purus sit amet fermentum. Aenean lacinia bibendum nulla sed consectetur. Nullam quis risus eget urna mollis ornare vel eu leo.',
-  'Donec id elit non mi porta gravida at eget metus. Vestibulum id ligula porta felis euismod semper. Etiam porta sem malesuada magna mollis euismod. Maecenas sed diam eget risus varius blandit sit amet non magna.\n\nFusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus.'
-];
 const PLACEHOLDER_COMMENT_TEXTS = [
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit. In rhoncus congue tincidunt. Vivamus fermentum vel sapien eu accumsan.',
   'Quisque a ex sed orci fringilla feugiat vel quam.',
@@ -19,28 +18,9 @@ const PLACEHOLDER_COMMENT_TEXTS = [
   'Maecenas sed diam eget risus varius blandit sit amet non magna.'
 ];
 
-let postCounter = 0;
-const POSTS_PER_BATCH = 4;
-
-const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const minutesAgo = (m) => new Date(Date.now() - m * 60000);
 
 const postsById = new Map();
-
-function makePlaceholderPost() {
-  postCounter += 1;
-  const hasPhoto = Math.random() < 0.5;
-  return {
-    id: 'post-' + postCounter + '-' + Math.random().toString(36).slice(2, 7),
-    username: pick(PLACEHOLDER_USERS),
-    title: pick(PLACEHOLDER_TITLES),
-    tags: ['Tag 1', 'Tag 2', 'Tag 3', 'Tag 4'],
-    description: pick(PLACEHOLDER_DESCRIPTIONS),
-    imageUrl: hasPhoto ? '' : null,
-
-    createdAt: minutesAgo(pick([0, 1, 4, 12, 45, 95, 300, 1500, 4000]))
-  };
-}
 
 function loadCommentsForPost(postId) {
   return PLACEHOLDER_COMMENT_TEXTS.map((text, i) => ({
@@ -138,16 +118,64 @@ function renderPost(post) {
   return card;
 }
 
-function loadPosts(count = POSTS_PER_BATCH) {
-  for (let i = 0; i < count; i++) feed.appendChild(renderPost(makePlaceholderPost()));
+let feedCursor = null;
+let feedDone = false;
+let feedLoading = false;
+let stopNewPosts = null;
+let currentUser = null;
+
+function addPostToFeed(post, atTop = false) {
+  if (postsById.has(post.id)) return;
+  const card = renderPost(post);
+  if (atTop) feed.prepend(card);
+  else feed.appendChild(card);
+  feedEmpty.classList.add('d-none');
+}
+
+function sentinelIsNear() {
+  return sentinel.getBoundingClientRect().top < window.innerHeight + 300;
+}
+
+async function loadNextPage() {
+  if (feedLoading || feedDone) return;
+  feedLoading = true;
+  try {
+    const page = await fetchPostsPage(feedCursor);
+    page.posts.forEach((post) => addPostToFeed(post));
+    feedCursor = page.cursor;
+    feedDone = page.done;
+
+    if (!stopNewPosts) {
+      const newest = page.posts.length ? page.posts[0].createdAt : new Date(0);
+      stopNewPosts = subscribeToNewPosts(newest, (post) => addPostToFeed(post, true));
+    }
+  } catch (error) {
+    console.error('Could not load posts', error);
+  } finally {
+    feedLoading = false;
+    feedEmpty.classList.toggle('d-none', feed.children.length > 0);
+    if (feedDone) {
+      sentinel.classList.add('d-none');
+      observer.disconnect();
+    } else if (sentinelIsNear()) {
+      loadNextPage();
+    }
+  }
 }
 
 const observer = new IntersectionObserver((entries) => {
-  if (entries[0].isIntersecting) {
-    console.log('Loading more placeholder posts');
-    loadPosts();
-  }
+  if (entries[0].isIntersecting) loadNextPage();
 }, { rootMargin: '300px' });
+
+async function fillGreeting(user) {
+  try {
+    const snapshot = await getDoc(doc(db, 'users', user.uid));
+    const name = snapshot.exists() ? snapshot.data().name : null;
+    if (name) document.getElementById('greeting-username').textContent = name;
+  } catch (error) {
+    console.error('Could not load username', error);
+  }
+}
 
 function updateTimestamps() {
   const now = Date.now();
@@ -320,5 +348,14 @@ feed.addEventListener('keydown', (e) => {
   }
 });
 
-loadPosts(5);
-observer.observe(sentinel);
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    window.location.href = LOGIN_PAGE;
+    return;
+  }
+  if (currentUser) return;
+  currentUser = user;
+  fillGreeting(user);
+  observer.observe(sentinel);
+  loadNextPage();
+});

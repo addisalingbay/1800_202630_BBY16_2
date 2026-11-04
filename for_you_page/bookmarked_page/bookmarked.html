@@ -37,6 +37,16 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="bookmarked.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "firebase/app": "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js",
+      "firebase/auth": "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js",
+      "firebase/firestore": "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js",
+      "firebase/storage": "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js"
+    }
+  }
+  </script>
+  <script type="module" src="bookmarked.js"></script>
 </body>
 </html>
