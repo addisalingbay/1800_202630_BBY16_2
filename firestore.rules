@@ -62,5 +62,15 @@ service cloud.firestore {
         allow update, delete: if false;
       }
     }
+
+    // Per-user data: signup writes users/{uid}; createPost writes
+    // users/{uid}/createdPosts/{postId}. Users may only touch their own.
+    match /users/{userId} {
+      allow read, write: if signedIn() && request.auth.uid == userId;
+
+      match /{document=**} {
+        allow read, write: if signedIn() && request.auth.uid == userId;
+      }
+    }
   }
 }
