@@ -112,16 +112,26 @@
           </button>
           <button type="button" id="addImagesButton"
             class="btn btn-light fw-bold rounded-4 flex-fill d-flex justify-content-center align-items-center gap-2 w-50">
-            <p class="mb-0">Add Images</p><img src="../../images/image.png" width="25px">
+            <p class="mb-0">Image Link</p><img src="../../images/image.png" width="25px">
           </button>
-          <input type="file" id="fileInput" accept="image/*" hidden>
+        </div>
+
+        <!-- Paste-a-link image field (shown when "Image Link" is clicked) -->
+        <div id="imageLinkSection" class="mt-3 d-none">
+          <label for="imageUrl" class="form-label fw-bold small mb-1">Image link</label>
+          <input type="url" id="imageUrl" class="form-control border-0 rounded-3" maxlength="2048"
+            placeholder="https://example.com/photo.jpg" autocomplete="off">
+          <div class="form-text">Paste a direct link to a picture. It must start with https://</div>
+          <img id="imageLinkPreview" class="img-fluid rounded-3 mt-2 d-none" style="max-height: 200px;" alt="Image preview">
         </div>
       </div>
     </form>
 
     
+    <div id="postError" class="alert alert-danger mt-3 d-none" role="alert"></div>
+
     <div class="d-flex justify-content-end mt-2 gap-5">
-      <button class="btn btn-secondary btn-lg fw-bold fs-2 px-4 post-btn w-50">Return</button>
+      <button type="button" id="returnButton" class="btn btn-secondary btn-lg fw-bold fs-2 px-4 post-btn w-50">Return</button>
       <button type="submit" form="createPost" id="createPostButton" class="btn btn-secondary btn-lg fw-bold fs-2 px-4 post-btn w-50">Post</button>
     </div>
 
