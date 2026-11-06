@@ -3,10 +3,13 @@ import { onAuthStateChanged } from 'firebase/auth';
 import {
   addDoc,
   collection,
+  doc,
+  increment,
   onSnapshot,
   orderBy,
   query,
-  serverTimestamp
+  serverTimestamp,
+  writeBatch
 } from 'firebase/firestore';
 
 const feed = document.getElementById('post-feed');
@@ -19,6 +22,15 @@ let commentsTrigger = null;
 let lastTrigger = null;
 let stopCommentsListener = null;
 let stopPostsListener = null;
+
+// Likes: ids of the posts the signed-in user has liked (live from
+// users/{uid}/likedPosts), plus posts with a like write still in flight.
+const likedPostIds = new Set();
+const pendingLikes = new Set();
+let stopLikesListener = null;
+
+// Share links look like ...homePage.html?post=<postId>
+let deepLinkPostId = new URLSearchParams(window.location.search).get('post');
 
 const overlay = document.getElementById('post-details');
 const backButton = document.getElementById('post-details-back');
@@ -75,12 +87,19 @@ function tagsHtml(tags) {
   ).join('')}</div>`;
 }
 
-function actionsHtml(opensComments = false) {
+function actionsHtml(post) {
+  const liked = likedPostIds.has(post.id);
   return `
-    <div class="d-flex gap-3 fs-5">
-      <button type="button" class="btn btn-link text-body p-0 lh-1 post-action" aria-label="Like"><i class="bi bi-heart"></i></button>
-      <button type="button" class="btn btn-link text-body p-0 lh-1 post-action" aria-label="Comments"${opensComments ? ' data-open-comments' : ''}><i class="bi bi-chat-square-text"></i></button>
-      <button type="button" class="btn btn-link text-body p-0 lh-1 post-action" aria-label="Share"><i class="bi bi-share"></i></button>
+    <div class="d-flex align-items-center gap-3 fs-5" data-post-id="${escapeHtml(post.id)}">
+      <span class="d-inline-flex align-items-center gap-1">
+        <button type="button" class="btn btn-link p-0 lh-1 post-action ${liked ? 'like-active' : 'text-body'}" data-like-button aria-label="${liked ? 'Unlike' : 'Like'}" aria-pressed="${liked}"><i class="bi ${liked ? 'bi-heart-fill' : 'bi-heart'}"></i></button>
+        <span class="like-count small" data-like-count>${post.likeCount}</span>
+      </span>
+      <button type="button" class="btn btn-link text-body p-0 lh-1 post-action" data-open-comments aria-label="Comments"><i class="bi bi-chat-square-text"></i></button>
+      <span class="position-relative d-inline-flex">
+        <button type="button" class="btn btn-link text-body p-0 lh-1 post-action" data-share-button aria-label="Copy link to post"><i class="bi bi-share-fill"></i></button>
+        <span class="share-toast badge rounded-pill text-bg-secondary fw-normal position-absolute top-100 start-50 translate-middle-x mt-1 pe-none fade" role="status" aria-live="polite"></span>
+      </span>
     </div>`;
 }
 
@@ -103,6 +122,7 @@ function normalizePost(snapshot) {
     tags: Array.isArray(data.tags) ? data.tags : [],
     description: data.description || '',
     imageUrl: data.imageUrl || '',
+    likeCount: Math.max(0, Number(data.likeCount) || 0),
     createdAt: asDate(data.createdAt)
   };
 }
@@ -128,9 +148,9 @@ function renderPost(post) {
   const preview = `<p class="post-preview small mb-0">${escapeHtml(post.description)}</p>`;
 
   if (!post.imageUrl) {
-    card.innerHTML = `${header}<div class="card-body pt-1 pb-2">${preview}<div class="mt-2">${actionsHtml()}</div></div>`;
+    card.innerHTML = `${header}<div class="card-body pt-1 pb-4">${preview}<div class="mt-2">${actionsHtml(post)}</div></div>`;
   } else {
-    card.innerHTML = `${header}${imageHtml(post, 'ratio-16x9')}<div class="card-body py-2"><div class="mb-1">${actionsHtml()}</div>${preview}</div>`;
+    card.innerHTML = `${header}${imageHtml(post, 'ratio-1x1')}<div class="card-body py-2"><div class="mb-1">${actionsHtml(post)}</div>${preview}</div>`;
   }
   return card;
 }
@@ -166,11 +186,138 @@ function startPostsFeed() {
     if (activePostId && postsById.has(activePostId)) {
       renderPostDetails(postsById.get(activePostId));
     }
+
+    openDeepLinkedPost();
   }, (error) => {
     console.error('Unable to load posts from Firestore:', error);
     showFeedMessage('Unable to load posts. Please refresh and try again.');
     sentinel.classList.add('d-none');
   });
+}
+
+// ---------------------------------------------------------------------
+// Likes
+// ---------------------------------------------------------------------
+// users/{uid}/likedPosts/{postId}  -> one doc per (user, post), so a user can
+//                                     only ever like a post once.
+// posts/{postId}.likeCount         -> the counter shown next to the heart.
+// Both are changed together in one atomic batch.
+function syncLikeUI() {
+  document.querySelectorAll('[data-post-id]').forEach((group) => {
+    const post = postsById.get(group.dataset.postId);
+    if (!post) return;
+    const liked = likedPostIds.has(post.id);
+    const button = group.querySelector('[data-like-button]');
+    const icon = button.querySelector('i');
+    button.classList.toggle('like-active', liked);
+    button.classList.toggle('text-body', !liked);
+    button.setAttribute('aria-pressed', String(liked));
+    button.setAttribute('aria-label', liked ? 'Unlike' : 'Like');
+    icon.classList.toggle('bi-heart-fill', liked);
+    icon.classList.toggle('bi-heart', !liked);
+    group.querySelector('[data-like-count]').textContent = String(post.likeCount);
+  });
+}
+
+async function toggleLike(postId) {
+  const user = auth.currentUser;
+  if (!user || !postsById.has(postId) || pendingLikes.has(postId)) return;
+  pendingLikes.add(postId);
+
+  const postRef = doc(db, 'posts', postId);
+  const likeRef = doc(db, 'users', user.uid, 'likedPosts', postId);
+  const batch = writeBatch(db);
+  if (likedPostIds.has(postId)) {
+    batch.delete(likeRef);
+    batch.update(postRef, { likeCount: increment(-1) });
+  } else {
+    batch.set(likeRef, { postId, createdAt: serverTimestamp() });
+    batch.update(postRef, { likeCount: increment(1) });
+  }
+
+  try {
+    await batch.commit();
+  } catch (error) {
+    console.error('Could not update like:', error);
+    alert('Your like could not be saved. Please check your connection and try again.');
+  } finally {
+    pendingLikes.delete(postId);
+    syncLikeUI();
+  }
+}
+
+function startLikesListener(uid) {
+  if (stopLikesListener) stopLikesListener();
+  stopLikesListener = onSnapshot(collection(db, 'users', uid, 'likedPosts'), (snapshot) => {
+    likedPostIds.clear();
+    snapshot.docs.forEach((likeSnapshot) => likedPostIds.add(likeSnapshot.id));
+    syncLikeUI();
+  }, (error) => {
+    console.error('Unable to load liked posts:', error);
+  });
+}
+
+function stopLikes() {
+  if (stopLikesListener) stopLikesListener();
+  stopLikesListener = null;
+  likedPostIds.clear();
+  syncLikeUI();
+}
+
+// ---------------------------------------------------------------------
+// Share
+// ---------------------------------------------------------------------
+function postShareUrl(postId) {
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.hash = '';
+  url.searchParams.set('post', postId);
+  return url.toString();
+}
+
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (error) {
+      // fall through to the legacy copy below
+    }
+  }
+  const helper = document.createElement('textarea');
+  helper.value = text;
+  helper.setAttribute('readonly', '');
+  helper.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+  document.body.appendChild(helper);
+  helper.select();
+  let copied = false;
+  try { copied = document.execCommand('copy'); } catch (error) { copied = false; }
+  helper.remove();
+  return copied;
+}
+
+async function sharePost(postId, button) {
+  const copied = await copyText(postShareUrl(postId));
+  const toast = button.parentElement.querySelector('.share-toast');
+  if (!toast) return;
+  toast.textContent = copied ? 'Copied' : 'Failed';
+  toast.classList.add('show');
+  clearTimeout(toast._hideTimer);
+  toast._hideTimer = setTimeout(() => toast.classList.remove('show'), 1400);
+}
+
+function openDeepLinkedPost() {
+  if (!deepLinkPostId) return;
+  const postId = deepLinkPostId;
+  deepLinkPostId = null;
+
+  const params = new URLSearchParams(window.location.search);
+  params.delete('post');
+  const remaining = params.toString();
+  history.replaceState(null, '', window.location.pathname + (remaining ? `?${remaining}` : '') + window.location.hash);
+
+  if (postsById.has(postId)) openPostDetails(postId, null);
+  else console.warn('Shared post not found:', postId);
 }
 
 function updateTimestamps() {
@@ -196,7 +343,7 @@ function renderPostDetails(post) {
       </div>
       <div class="px-3 pb-2"><h2 class="h5 fw-bold mb-1">${escapeHtml(post.title)}</h2>${tagsHtml(post.tags)}</div>
       ${hasPhoto ? imageHtml(post, 'ratio-1x1') : ''}
-      <div class="px-3 py-2">${actionsHtml(true)}</div>
+      <div class="px-3 py-2">${actionsHtml(post)}</div>
       <div class="post-description-toggle px-3 pb-3" role="button" tabindex="0" aria-expanded="false">
         <div class="post-description-body small">${escapeHtml(post.description)}</div>
         <div class="post-description-hint small text-body-secondary mt-1">Show more</div>
@@ -323,7 +470,9 @@ async function submitComment() {
     });
     commentTextarea.value = '';
     syncCommentBox();
-    commentsOverlayScroll.scrollTo({ top: 0, behavior: 'smooth' });
+    commentsOverlayScroll.scrollTop = 0;
+    // Always land back on the post details after commenting.
+    closeCommentsOverlay();
   } catch (error) {
     console.error('Could not save comment:', error);
     alert('Your comment could not be saved. Please check your connection and try again.');
@@ -357,8 +506,11 @@ function closeCommentsOverlay() {
 commentsBack.addEventListener('click', closeCommentsOverlay);
 
 detailsPost.addEventListener('click', (event) => {
-  const trigger = event.target.closest('[data-open-comments]');
-  if (trigger) openCommentsOverlay(trigger);
+  const button = event.target.closest('.post-action');
+  if (!button || !activePostId) return;
+  if (button.matches('[data-like-button]')) toggleLike(activePostId);
+  else if (button.matches('[data-share-button]')) sharePost(activePostId, button);
+  else if (button.matches('[data-open-comments]')) openCommentsOverlay(button);
 });
 commentLaunchBar.addEventListener('click', (event) => {
   if (event.target.closest('.post-action')) return;
@@ -408,9 +560,20 @@ document.addEventListener('keydown', (event) => {
 });
 
 feed.addEventListener('click', (event) => {
-  if (event.target.closest('.post-action')) return;
   const card = event.target.closest('.post-card');
-  if (card) openPostDetails(card.id, card);
+  if (!card) return;
+  const button = event.target.closest('.post-action');
+  if (button) {
+    if (button.matches('[data-like-button]')) toggleLike(card.id);
+    else if (button.matches('[data-share-button]')) sharePost(card.id, button);
+    else if (button.matches('[data-open-comments]')) {
+      // Open the post details first so closing the comments returns there.
+      openPostDetails(card.id, card);
+      openCommentsOverlay(commentLaunch);
+    }
+    return;
+  }
+  openPostDetails(card.id, card);
 });
 feed.addEventListener('keydown', (event) => {
   if ((event.key === 'Enter' || event.key === ' ') && event.target.classList.contains('post-card')) {
@@ -423,13 +586,15 @@ onAuthStateChanged(auth, (user) => {
   if (!user) {
     if (stopPostsListener) stopPostsListener();
     stopPostsListener = null;
+    stopLikes();
     showFeedMessage('Please sign in to view posts.');
     sentinel.classList.add('d-none');
     syncCommentBox();
     return;
   }
   const greetingName = document.getElementById('greeting-username');
-  if (greetingName) greetingName.textContent = user.displayName || user.email || 'there';
+  if (greetingName) greetingName.textContent = String(user.displayName || user.email || 'there').toUpperCase();
   syncCommentBox();
+  startLikesListener(user.uid);
   startPostsFeed();
 });

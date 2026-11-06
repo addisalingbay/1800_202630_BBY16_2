@@ -14,3 +14,37 @@ h1 {
 .navbar.fixed-bottom {
   background-color: var(--bs-secondary-bg);
 }
+
+/* ---------------------------------------------------------------------
+   ScamMedia theme for the homepage / For You page (scoped to
+   body.scam-theme so nothing else changes).
+   Icons are black PNGs; the filter below recolours them to cream
+   #E3F6BE without changing the image files, size or shape.
+   --------------------------------------------------------------------- */
+.scam-theme .imgButton {
+  filter: brightness(0) saturate(100%) invert(38.1%) sepia(13.1%) saturate(417.7%) hue-rotate(38.8deg) brightness(202.5%) contrast(147.7%);
+}
+
+.scam-theme #mainHeading {
+  color: #87F150;
+  font-style: italic;
+  font-weight: 800;
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.scam-theme .navbar.fixed-bottom {
+  --bs-navbar-color: #E3F6BE;
+  --bs-navbar-hover-color: #E3F6BE;
+  --bs-navbar-active-color: #E3F6BE;
+  background-color: #181818;
+  box-shadow: inset 0 1px 0 #2A3A20;
+}
+
+.scam-theme .navbar .nav-link,
+.scam-theme .navbar .nav-link:hover,
+.scam-theme .navbar .nav-link:focus,
+.scam-theme .navbar .nav-link p {
+  color: #E3F6BE;
+}
