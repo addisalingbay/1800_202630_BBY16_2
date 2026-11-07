@@ -49,28 +49,22 @@ h1 {
   color: #E3F6BE;
 }
 
-/* Notifications drawer (Bootstrap Offcanvas), themed like the rest of the page */
+/* The notifications overlay keeps Bootstrap's own default dark look. It is not
+   given the ScamMedia colours, so these reset the theme variables for it only. */
 .scam-theme #notificationsOffcanvas {
-  --bs-offcanvas-bg: #181818;
-  --bs-offcanvas-color: #E3F6BE;
-  --bs-offcanvas-border-color: #2A3A20;
-  /* Leave a strip of backdrop visible on phones so tapping outside closes it */
-  --bs-offcanvas-width: min(400px, 85vw);
+  --bs-body-bg: #212529;
+  --bs-body-bg-rgb: 33, 37, 41;
+  --bs-body-color: #dee2e6;
+  --bs-body-color-rgb: 222, 226, 230;
+  --bs-emphasis-color: #fff;
+  --bs-emphasis-color-rgb: 255, 255, 255;
+  --bs-secondary-color: rgba(222, 226, 230, .75);
+  --bs-secondary-color-rgb: 222, 226, 230;
+  --bs-secondary-bg: #343a40;
+  --bs-secondary-bg-rgb: 52, 58, 64;
+  --bs-tertiary-bg: #2b3035;
+  --bs-tertiary-bg-rgb: 43, 48, 53;
+  --bs-border-color: #495057;
+  --bs-primary: #0d6efd;
+  --bs-primary-rgb: 13, 110, 253;
 }
-
-.scam-theme .notification-item {
-  --bs-alert-bg: #14210D;
-  --bs-alert-color: #E3F6BE;
-  --bs-alert-border-color: #2A3A20;
-  --bs-alert-link-color: #87F150;
-}
-
-.scam-theme .notification-item .alert-heading { color: #87F150; }
-
-.scam-theme #clear-notifications {
-  background-color: #87F150;
-  border-color: #87F150;
-  color: #14210D;
-  font-weight: 600;
-}
-.scam-theme #clear-notifications:disabled { opacity: .45; }
