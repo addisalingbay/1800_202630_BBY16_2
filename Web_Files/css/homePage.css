@@ -48,3 +48,29 @@ h1 {
 .scam-theme .navbar .nav-link p {
   color: #E3F6BE;
 }
+
+/* Notifications drawer (Bootstrap Offcanvas), themed like the rest of the page */
+.scam-theme #notificationsOffcanvas {
+  --bs-offcanvas-bg: #181818;
+  --bs-offcanvas-color: #E3F6BE;
+  --bs-offcanvas-border-color: #2A3A20;
+  /* Leave a strip of backdrop visible on phones so tapping outside closes it */
+  --bs-offcanvas-width: min(400px, 85vw);
+}
+
+.scam-theme .notification-item {
+  --bs-alert-bg: #14210D;
+  --bs-alert-color: #E3F6BE;
+  --bs-alert-border-color: #2A3A20;
+  --bs-alert-link-color: #87F150;
+}
+
+.scam-theme .notification-item .alert-heading { color: #87F150; }
+
+.scam-theme #clear-notifications {
+  background-color: #87F150;
+  border-color: #87F150;
+  color: #14210D;
+  font-weight: 600;
+}
+.scam-theme #clear-notifications:disabled { opacity: .45; }
