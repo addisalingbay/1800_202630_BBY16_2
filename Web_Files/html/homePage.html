@@ -72,7 +72,7 @@
   <div id="topBar" class="row align-items-center">
 
     <button type="button" id="notificationsButton" class="btn col text-start" aria-label="Open notifications"
-      aria-controls="notificationsOffcanvas" aria-expanded="false">
+      aria-controls="notificationsFrame" aria-expanded="false">
       <img src="../../images/bell.png" alt="Icon" width="50" height="50" class="me-2 align-middle imgButton">
     </button>
 
@@ -89,45 +89,10 @@
 
 
 
-  <!-- Notifications overlay: same content as notificationPage.html. The bell above opens it. -->
-  <div class="offcanvas offcanvas-start" tabindex="-1" id="notificationsOffcanvas" aria-labelledby="notificationsOffcanvasLabel">
-    <div class="offcanvas-header">
-      <h5 class="offcanvas-title" id="notificationsOffcanvasLabel">Notifications</h5>
-      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-    </div>
-    <div class="offcanvas-body">
-      <div role="alert" class="alert alert-success">
-
-        <div class="vstack">
-          <button type="button" class="btn btn-warning" id="clear-notifications" data-bs-dismiss="alert" aria-label="Close">
-            Clear All Notifications
-          </button>
-
-          <div class="alert alert-success" role="alert">
-            <div class="vstack">
-              <h4 class="alert-heading mb-2">[Post Title will go here]</h4>
-              <p>[post description will go here and <a href="#" class="alert-link">Link takes you to homepage right now, change it to post afterwords</a> ]</p>
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-              <hr class="my-3">
-            </div>
-          </div>
-
-          <div class="alert alert-success" role="alert">
-            <div class="vstack">
-              <h4 class="alert-heading mb-2">[Post Title will go here]</h4>
-              <p>[post description will go here and <a href="#" class="alert-link">Link takes you to homepage right now, change it to post afterwords</a> ]</p>
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-              <hr class="my-3">
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <p>No more notifications.</p>
-      </div>
-    </div>
-  </div>
+  <!-- The notifications overlay is the original notificationPage.html, shown full-screen and transparent so
+       it keeps its own styling. It stays hidden until the bell above is clicked. -->
+  <iframe id="notificationsFrame" src="notificationPage.html" title="Notifications" hidden
+    class="position-fixed top-0 start-0 w-100 h-100 border-0" style="z-index: 2000;"></iframe>
 
   <div id="forYouMount"></div>
 

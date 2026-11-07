@@ -48,23 +48,3 @@ h1 {
 .scam-theme .navbar .nav-link p {
   color: #E3F6BE;
 }
-
-/* The notifications overlay keeps Bootstrap's own default dark look. It is not
-   given the ScamMedia colours, so these reset the theme variables for it only. */
-.scam-theme #notificationsOffcanvas {
-  --bs-body-bg: #212529;
-  --bs-body-bg-rgb: 33, 37, 41;
-  --bs-body-color: #dee2e6;
-  --bs-body-color-rgb: 222, 226, 230;
-  --bs-emphasis-color: #fff;
-  --bs-emphasis-color-rgb: 255, 255, 255;
-  --bs-secondary-color: rgba(222, 226, 230, .75);
-  --bs-secondary-color-rgb: 222, 226, 230;
-  --bs-secondary-bg: #343a40;
-  --bs-secondary-bg-rgb: 52, 58, 64;
-  --bs-tertiary-bg: #2b3035;
-  --bs-tertiary-bg-rgb: 43, 48, 53;
-  --bs-border-color: #495057;
-  --bs-primary: #0d6efd;
-  --bs-primary-rgb: 13, 110, 253;
-}
