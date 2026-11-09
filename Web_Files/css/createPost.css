@@ -16,7 +16,7 @@ body {
   border: 1px solid #2A3A20;
 }
 .scam-theme .card-header .text-body-secondary {
-  color: #87F150 !important; /* "New post" label */
+  color: #87F150 !important;
 }
 
 /* Borderless title / description */
