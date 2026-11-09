@@ -1,5 +1,6 @@
 import { db, auth } from "./firebaseConfig.js";
-import { collection, doc, serverTimestamp, writeBatch } from "firebase/firestore";
+import { collection, doc, getDoc, serverTimestamp, writeBatch } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
 // ---------------------------------------------------------------------
 // Create Post
@@ -21,8 +22,8 @@ const descriptionInput = document.getElementById("description");
 const addImagesButton = document.getElementById("addImagesButton");
 const addTagsButton = document.getElementById("addTagsButton");
 const tagSection = document.getElementById("tagSection");
-const tagInput = document.getElementById("tagInput");
-const addTagConfirm = document.getElementById("addTagConfirm");
+const availableTagsContainer = document.getElementById("availableTags");
+const tagStatus = document.getElementById("tagStatus");
 const tagsContainer = document.getElementById("postTags");
 const imageLinkSection = document.getElementById("imageLinkSection");
 const imageUrlInput = document.getElementById("imageUrl");
@@ -38,7 +39,7 @@ const MAX_DESCRIPTION = 10000;
 const MAX_IMAGE_URL = 2048;
 const MAX_USERNAME = 80;
 const MAX_TAGS = 10;
-const MAX_TAG_LENGTH = 30;
+
 
 function showError(message) {
   postError.textContent = message;
@@ -88,62 +89,86 @@ function imageLoads(url) {
 // ---------------------------------------------------------------------
 // Tags: kept in this array and drawn as Bootstrap badges inside #postTags.
 // ---------------------------------------------------------------------
-const tags = [];
 
-function renderTags() {
-  tagsContainer.replaceChildren();
-  tags.forEach((tag, index) => {
-    const chip = document.createElement("span");
-    chip.className = "badge rounded-pill text-bg-secondary fw-normal d-inline-flex align-items-center gap-1";
-    chip.append(document.createTextNode(tag)); // text only, never HTML
+const TAGS_DOC = doc(db, "posts", "Tags");
+let allTags = [];          // every premade tag, in database order
+const selectedTags = [];   // what will be saved with the post
+let tagsLoaded = false;
 
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.className = "btn-close btn-close-white";
-    remove.style.fontSize = "0.55rem";
-    remove.setAttribute("aria-label", `Remove tag ${tag}`);
-    remove.addEventListener("click", () => {
-      tags.splice(index, 1);
-      clearError();
-      renderTags();
-    });
-
-    chip.append(remove);
-    tagsContainer.append(chip);
-  });
+function makeTagButton(tag, isSelected) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `badge rounded-pill fw-normal ${
+    isSelected ? "text-bg-secondary border-0" : "tag-available"
+  }`;
+  button.textContent = tag; // text only, never HTML
+  button.setAttribute("aria-label", isSelected ? `Remove tag ${tag}` : `Add tag ${tag}`);
+  button.addEventListener("click", () => (isSelected ? deselectTag(tag) : selectTag(tag)));
+  return button;
 }
 
-// Turns what is typed into one clean tag and adds it. Returns true if added.
-function addTagFromInput() {
-  const tag = tagInput.value.replace(/^#+/, "").replace(/[\s,]+/g, " ").trim().slice(0, MAX_TAG_LENGTH).trim();
-  tagInput.value = "";
-  if (!tag) return false;
-  if (tags.some((existing) => existing.toLowerCase() === tag.toLowerCase())) return false;
-  if (tags.length >= MAX_TAGS) {
+function renderTags() {
+  availableTagsContainer.replaceChildren();
+  tagsContainer.replaceChildren();
+
+  allTags
+    .filter((tag) => !selectedTags.includes(tag))
+    .forEach((tag) => availableTagsContainer.append(makeTagButton(tag, false)));
+
+  selectedTags.forEach((tag) => tagsContainer.append(makeTagButton(tag, true)));
+
+  if (tagsLoaded) {
+    if (!allTags.length) tagStatus.textContent = "No tags available yet.";
+    else if (selectedTags.length === allTags.length) tagStatus.textContent = "All tags selected.";
+    else tagStatus.textContent = "";
+  }
+}
+
+function selectTag(tag) {
+  if (selectedTags.includes(tag)) return;
+  if (selectedTags.length >= MAX_TAGS) {
     showError(`You can add up to ${MAX_TAGS} tags.`);
-    return false;
+    return;
   }
   clearError();
-  tags.push(tag);
+  selectedTags.push(tag);
   renderTags();
-  return true;
+}
+
+function deselectTag(tag) {
+  const index = selectedTags.indexOf(tag);
+  if (index === -1) return;
+  selectedTags.splice(index, 1);
+  clearError();
+  renderTags(); // the tag reappears in its original position in the list
+}
+
+async function loadTags() {
+  if (tagsLoaded) return;
+  tagStatus.textContent = "Loading tags...";
+  try {
+    const snap = await getDoc(TAGS_DOC);
+    const data = snap.exists() ? snap.data() : {};
+    const values = Object.keys(data)
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })) // Tag1, Tag2, ... Tag10
+      .map((key) => data[key])
+      .filter((value) => typeof value === "string" && value.trim())
+      .map((value) => value.trim());
+    allTags = [...new Set(values)];
+    tagsLoaded = true;
+  } catch (error) {
+    console.error("Could not load tags:", error);
+    tagStatus.textContent = "Could not load tags. Close and reopen this panel to try again.";
+    return;
+  }
+  renderTags();
 }
 
 addTagsButton.addEventListener("click", () => {
   tagSection.classList.toggle("d-none");
-  if (!tagSection.classList.contains("d-none")) tagInput.focus();
+  if (!tagSection.classList.contains("d-none")) loadTags();
 });
 
-tagInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" || event.key === ",") {
-    event.preventDefault(); // Enter must not submit the whole post
-    addTagFromInput();
-  }
-});
-addTagConfirm.addEventListener("click", () => {
-  addTagFromInput();
-  tagInput.focus();
-});
 
 // Show / hide the image-link field (Bootstrap's d-none utility).
 addImagesButton.addEventListener("click", () => {
@@ -193,11 +218,7 @@ form.addEventListener("submit", async (event) => {
     showError(`The post is too long (maximum ${MAX_DESCRIPTION} characters).`);
     return;
   }
-  if (tagInput.value.trim() && tags.length >= MAX_TAGS) {
-    showError(`You can add up to ${MAX_TAGS} tags.`);
-    return;
-  }
-  addTagFromInput(); // include a tag that was typed but not yet added
+
   const image = readImageUrl();
   if (image.error) {
     showError(image.error);
@@ -222,7 +243,7 @@ form.addEventListener("submit", async (event) => {
       username,
       title,
       description,
-      tags: [...tags],
+      tags: [...selectedTags],   // empty array if none picked, so tags stay optional
       imageUrl: image.url,
       createdAt: serverTimestamp(),
       likeCount: 0
@@ -241,4 +262,9 @@ form.addEventListener("submit", async (event) => {
     showError("Your post could not be saved. Please check your connection and try again.");
     setSaving(false);
   }
+});
+
+onAuthStateChanged(auth, (user) => {
+  const name = document.getElementById("composerUsername");
+  if (name && user) name.textContent = user.displayName || user.email || "You";
 });
