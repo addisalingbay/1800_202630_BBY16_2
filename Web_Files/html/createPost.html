@@ -12,16 +12,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&display=swap"
     rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="../css/homePage.css">
   <link rel="stylesheet" href="../css/createPost.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 
 </head>
 
-<body class="container-fluid">
+<body class="container-fluid scam-theme">
 
 
 
   <nav class="navbar navbar-expand navbar-dark fixed-bottom py-0">
-    <div class="container-fluid bg-dark">
+    <div class="container-fluid">
 
       <ul class="navbar-nav nav-fill w-100">
         <li class="nav-item mx-1">
@@ -68,87 +70,73 @@
     </div>
   </nav>
 
-  <div id="topBar" class="row align-items-center">
-
-    <h1 id="mainHeading" class="text-center fw-bold col text-center text-nowrap my-4">Create Post</h1>
-
+  <div id="topBar" class="text-center">
+    <h1 id="mainHeading" class="text-center fw-bold my-3">Create Post</h1>
   </div>
-
-  <div class="container py-3">
-
-    <form id="createPost" class="bg-light rounded-4 p-4">
-      <div class="rounded-4 mb-4 ">
-
-
-        <div id="logoAvatar" class="mb-4">
-          <img src="../../images/logo.jpg" width="50px">
-          <input type="text" id="title" class="form-control border-0 rounded-3" placeholder="Title...">
-        </div>
-
-
-        <textarea id="description" class="form-control border-0 rounded-3 mb-2 post-body"
-          placeholder="Whats on your mind..." style="height: 40vh"></textarea>
-
-
-        <div id="preview" class="fw-bold small mb-5 d-flex gap-4">
-          <div class="w-50">
-            <p>Tags:</p>
-            <div id="postTags" class="d-flex flex-wrap gap-1"></div>
-          </div>
-          <div class="w-50">
-            <p>Images:</p>
-            <div id="postImage">
-              <img src="../../images/image.png" width="25px">
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Action  -->
-        <div class="d-flex justify-content-between gap-4">
+  
+  <div class="container pb-3 create-wrap">
+  
+    <form id="createPost" class="card bg-body-tertiary border-0 rounded-3 overflow-hidden">
+  
+      <!-- Header: same layout as a feed post -->
+      <div class="card-header bg-transparent border-0 d-flex align-items-center gap-2 py-2">
+        <div class="post-avatar"></div>
+        <span id="composerUsername" class="fw-bold flex-grow-1 text-truncate">You</span>
+        <span class="small text-body-secondary">New post</span>
+      </div>
+  
+      <!-- Title + selected tags, like the feed card -->
+      <div class="px-3 pb-2">
+        <input type="text" id="title" maxlength="160"
+          class="form-control form-control-lg bg-transparent border-0 px-0 h5 fw-bold mb-1"
+          placeholder="Title..." autocomplete="off">
+        <div id="postTags"></div>
+      </div>
+  
+      <div class="card-body pt-1">
+        <textarea id="description"
+          class="form-control bg-transparent border-0 px-0 post-body"
+          placeholder="What's on your mind..."></textarea>
+  
+        <!-- Actions -->
+        <div class="d-flex gap-2 mt-3">
           <button type="button" id="addTagsButton"
-            class="btn btn-light fw-bold rounded-3 flex-fill d-flex justify-content-center align-items-center gap-2 w-50">
-            <p class="mb-0">Add Tags</p><img src="../../images/tag.png" width="25">
+            class="btn btn-sm btn-outline-secondary rounded-pill px-3 d-inline-flex align-items-center gap-2">
+            <i class="bi bi-tag"></i> Add tags
           </button>
           <button type="button" id="addImagesButton"
-            class="btn btn-light fw-bold rounded-4 flex-fill d-flex justify-content-center align-items-center gap-2 w-50">
-            <p class="mb-0">Image Link</p><img src="../../images/image.png" width="25px">
+            class="btn btn-sm btn-outline-secondary rounded-pill px-3 d-inline-flex align-items-center gap-2">
+            <i class="bi bi-image"></i> Image link
           </button>
         </div>
-
-        <!-- Tag entry (shown when "Add Tags" is clicked) -->
-        <div id="tagSection" class="mt-3 d-none">
-          <label for="tagInput" class="form-label fw-bold small mb-1">Tags</label>
-          <div class="input-group">
-            <input type="text" id="tagInput" class="form-control border-0 rounded-start-3" maxlength="30"
-              placeholder="Type a tag, then press Enter" autocomplete="off">
-            <button type="button" id="addTagConfirm" class="btn btn-dark rounded-end-3">Add</button>
-          </div>
-          <div class="form-text">Up to 10 tags. Press Enter or comma to add one.</div>
+  
+        <!-- Tag picker -->
+        <div id="tagSection" class="mt-3 p-3 bg-body-secondary rounded-3 d-none">
+          <p class="fw-bold small mb-2">Choose tags</p>
+          <div id="availableTags"></div>
+          <div id="tagStatus" class="form-text"></div>
         </div>
-
-        <!-- Paste-a-link image field (shown when "Image Link" is clicked) -->
-        <div id="imageLinkSection" class="mt-3 d-none">
+  
+        <!-- Image link -->
+        <div id="imageLinkSection" class="mt-3 p-3 bg-body-secondary rounded-3 d-none">
           <label for="imageUrl" class="form-label fw-bold small mb-1">Image link</label>
-          <input type="url" id="imageUrl" class="form-control border-0 rounded-3" maxlength="2048"
+          <input type="url" id="imageUrl" maxlength="2048"
+            class="form-control bg-body border-0 rounded-3"
             placeholder="https://example.com/photo.jpg" autocomplete="off">
           <div class="form-text">Paste a direct link to a picture. It must start with https://</div>
-          <img id="imageLinkPreview" class="img-fluid rounded-3 mt-2 d-none" style="max-height: 200px;" alt="Image preview">
+          <img id="imageLinkPreview" class="img-fluid rounded-3 mt-2 d-none" alt="Image preview">
         </div>
       </div>
     </form>
-
-    
+  
     <div id="postError" class="alert alert-danger mt-3 d-none" role="alert"></div>
-
-    <div class="d-flex justify-content-end mt-2 gap-5">
-      <button type="button" id="returnButton" class="btn btn-secondary btn-lg fw-bold fs-2 px-4 post-btn w-50">Return</button>
-      <button type="submit" form="createPost" id="createPostButton" class="btn btn-secondary btn-lg fw-bold fs-2 px-4 post-btn w-50">Post</button>
+  
+    <div class="d-flex gap-3 mt-3">
+      <button type="button" id="returnButton" class="btn btn-outline-secondary btn-lg fw-bold rounded-3 flex-fill">Return</button>
+      <button type="submit" form="createPost" id="createPostButton" class="btn btn-primary btn-lg fw-bold rounded-3 flex-fill">Post</button>
     </div>
-
+  
   </div>
-
-  <div id="preview" hidden></div>
 
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

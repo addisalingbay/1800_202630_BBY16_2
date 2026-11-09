@@ -101,19 +101,25 @@ function initAuthUI() {
     });
 
     // Signup form submit
+
     signupForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         hideError();
         const name = document.querySelector('#signupName')?.value?.trim() ?? '';
+        const username = document.querySelector('#signupUsername')?.value?.trim() ?? '';
         const email = document.querySelector('#signupEmail')?.value?.trim() ?? '';
         const password = document.querySelector('#signupPassword')?.value ?? '';
-        if (!name || !email || !password) {
-            showError('Please fill in name, email, and password.');
+        if (!name || !username || !email || !password) {
+            showError('Please fill in name, username, email, and password.');
+            return;
+        }
+        if (!/^[A-Za-z0-9_]{3,20}$/.test(username)) {
+            showError('Username must be 3-20 characters: letters, numbers, or underscores.');
             return;
         }
         setSubmitDisabled(signupForm, true);
         try {
-            await signupUser(name, email, password);
+            await signupUser(name, username, email, password);
             location.href = redirectUrl;
         } catch (err) {
             showError(authErrorMessage(err));
@@ -122,7 +128,7 @@ function initAuthUI() {
             setSubmitDisabled(signupForm, false);
         }
     });
-}
 
+};
 // --- Initialize UI on DOMContentLoaded ---
-document.addEventListener('DOMContentLoaded', initAuthUI);
+document.addEventListener('DOMContentLoaded', initAuthUI)

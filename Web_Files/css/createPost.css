@@ -1,25 +1,114 @@
-.imgButton {
-  filter: invert(0.5);
+body {
+  padding-bottom: 120px; /* keeps the fixed bottom nav off the buttons */
 }
 
-#logoAvatar {
-  display: grid;
-  grid-template-columns: 1fr 4fr;
+.create-wrap {
+  max-width: 640px;
 }
 
+/* Header row */
+.post-avatar {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #181818;
+  border: 1px solid #2A3A20;
+}
+.scam-theme .card-header .text-body-secondary {
+  color: #87F150 !important;
+}
+
+/* Borderless title / description */
+#title:focus,
+#description:focus {
+  box-shadow: none;
+  background: transparent;
+  color: var(--bs-body-color);
+}
+#title::placeholder,
+#description::placeholder {
+  color: var(--bs-secondary-color);
+}
 #description {
   height: 40vh;
-  max-height: 350px;
   min-height: 150px;
+  max-height: 350px;
+  resize: none;
 }
 
-body {
-  padding-bottom: 100px;
+/* Tag picker + image link panels */
+#tagSection,
+#imageLinkSection {
+  background: #181818 !important;
+  border: 1px solid #2A3A20;
+}
+#imageUrl {
+  background: #0f0f0f !important;
+}
+#imageUrl:focus {
+  border-color: #87F150;
+  box-shadow: 0 0 0 0.2rem rgba(135, 241, 80, 0.25);
+}
+#imageLinkPreview {
+  max-height: 200px;
 }
 
-#preview {
-  width: 25px;
-  height: 25px;
+/* Tag lists: horizontal, wrapping rows of pills */
+#availableTags,
+#postTags {
+  display: flex;
+  flex-flow: row wrap;
+  gap: 0.35rem;
+}
+#postTags:empty {
+  display: none;
+}
+#availableTags .badge,
+#postTags .badge {
+  flex: 0 0 auto;
+  cursor: pointer;
+  padding: 0.45em 0.85em;
+  font-size: 0.8rem;
+  white-space: normal;
+  word-break: break-word;
+}
+.tag-available {
+  background: transparent;
+  color: #E3F6BE;
+  border: 1px solid rgba(227, 246, 190, 0.35);
+}
+.tag-available:hover {
+  border-color: #87F150;
+  color: #87F150;
 }
 
-#preview:hover {}
+/* Cream outline buttons: Add tags, Image link, Return */
+#addTagsButton,
+#addImagesButton,
+#returnButton {
+  --bs-btn-color: #E3F6BE;
+  --bs-btn-border-color: rgba(227, 246, 190, 0.35);
+  --bs-btn-hover-color: #181818;
+  --bs-btn-hover-bg: #E3F6BE;
+  --bs-btn-hover-border-color: #E3F6BE;
+  --bs-btn-active-color: #181818;
+  --bs-btn-active-bg: #E3F6BE;
+  --bs-btn-active-border-color: #E3F6BE;
+}
+
+/* Green primary button: Post */
+#createPostButton {
+  --bs-btn-color: #181818;
+  --bs-btn-bg: #87F150;
+  --bs-btn-border-color: #87F150;
+  --bs-btn-hover-color: #181818;
+  --bs-btn-hover-bg: #9bf56d;
+  --bs-btn-hover-border-color: #9bf56d;
+  --bs-btn-active-color: #181818;
+  --bs-btn-active-bg: #6fd93d;
+  --bs-btn-active-border-color: #6fd93d;
+  --bs-btn-disabled-color: #181818;
+  --bs-btn-disabled-bg: #87F150;
+  --bs-btn-disabled-border-color: #87F150;
+}
