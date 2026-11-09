@@ -13,10 +13,18 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="heroes.css" rel="stylesheet" />
 
+    <!-- When this page is shown inside the homepage, keep its background transparent and let the
+         homepage bell act as the "Open Notifications" button. Opened on its own, it behaves as before. -->
+    <script>if (window.parent !== window) document.documentElement.classList.add('embedded');</script>
+    <style>
+        .embedded, .embedded body { background: transparent !important; }
+        .embedded #openNotifications { display: none; }
+    </style>
+
 </head>
 <body>
 
-    <button type="button" class="btn-solid theme-primary" commandfor="invokerDrawer" command="show-modal">
+    <button type="button" id="openNotifications" class="btn-solid theme-primary" commandfor="invokerDrawer" command="show-modal">
         Open Notifications
     </button>
     
@@ -62,6 +70,27 @@
 
     <script src="../assets/dist/js/bootstrap.bundle.min.js" class="astro-vvvwv3sm"></script>
     <script src="js/notifications.js"></script>
+
+    <script>
+        (function () {
+            var drawer = document.getElementById('invokerDrawer');
+            var trigger = document.getElementById('openNotifications');
+
+            // Called by the homepage bell.
+            window.openNotifications = function () {
+                if (drawer.open) return;
+                trigger.click();                        // the original button's own show-modal command
+                if (!drawer.open) drawer.showModal();   // fallback for browsers without invoker commands
+            };
+
+            // Tell the homepage when the drawer has closed so it can hide this frame.
+            drawer.addEventListener('close', function () {
+                if (window.parent === window) return;
+                var origin = window.location.origin === 'null' ? '*' : window.location.origin;
+                window.parent.postMessage({ type: 'notifications-closed' }, origin);
+            });
+        })();
+    </script>
 
     <script type="module" src="./src/main.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

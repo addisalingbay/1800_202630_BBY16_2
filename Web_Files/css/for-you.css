@@ -108,3 +108,83 @@ body.post-details-open { overflow: hidden; }
   .post-description-body,
   .post-description-body::after { transition-duration: 0s !important; transition-delay: 0s !important; }
 }
+
+.like-count { min-width: 1ch; font-variant-numeric: tabular-nums; }
+
+/* Small grey "Copied" bubble that sits under the share icon */
+.share-toast {
+  font-size: .6rem;
+  padding: .2rem .45rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  z-index: 2;
+}
+
+/* =====================================================================
+   ScamMedia theme: For You feed, post details and comments overlays.
+   Everything below is scoped to body.scam-theme, so no other page or
+   overlay is affected. It works by overriding Bootstrap's own CSS
+   variables, so bg-body / text-body / bg-body-tertiary etc. pick it up.
+   Palette: green #87F150, cream #E3F6BE, dark green #14210D, dark #181818
+   ===================================================================== */
+.scam-theme {
+  --scam-green: #87F150;
+  --scam-cream: #E3F6BE;
+  --scam-green-dark: #14210D;
+  --scam-dark: #181818;
+  --scam-field: #232724;
+  --scam-border: #2A3A20;
+
+  --bs-body-bg: #181818;
+  --bs-body-bg-rgb: 24, 24, 24;
+  --bs-body-color: #E3F6BE;
+  --bs-body-color-rgb: 227, 246, 190;
+  --bs-emphasis-color: #E3F6BE;
+  --bs-emphasis-color-rgb: 227, 246, 190;
+  --bs-secondary-color: rgba(227, 246, 190, .75);
+  --bs-secondary-color-rgb: 227, 246, 190;
+  --bs-secondary-bg: #14210D;
+  --bs-secondary-bg-rgb: 20, 33, 13;
+  --bs-tertiary-bg: #14210D;
+  --bs-tertiary-bg-rgb: 20, 33, 13;
+  --bs-border-color: #2A3A20;
+  --bs-primary: #87F150;
+  --bs-primary-rgb: 135, 241, 80;
+}
+
+/* Avatars */
+.scam-theme .post-avatar,
+.scam-theme .comment-bar .post-avatar { background-color: var(--scam-green); }
+
+/* Post image placeholder */
+.scam-theme .post-image.bg-secondary-subtle { background-color: #D9D9D9 !important; }
+
+/* Tags and the comments count (the grey "Copied" bubble is left alone) */
+.scam-theme .badge.text-bg-secondary:not(.share-toast) {
+  background-color: var(--scam-green) !important;
+  color: var(--scam-green-dark) !important;
+}
+
+/* A liked heart takes the colour of the "ScamMedia" title */
+.scam-theme .like-active,
+.scam-theme .like-active:hover { color: var(--scam-green) !important; }
+
+/* Comment bars (post details + comments overlay) */
+.scam-theme .comment-bar { background-color: var(--scam-dark) !important; }
+
+.scam-theme .comment-bar .form-control {
+  background-color: var(--scam-field);
+  color: var(--scam-cream);
+  border-color: transparent;
+}
+.scam-theme .comment-bar .form-control::placeholder { color: rgba(227, 246, 190, .6); }
+.scam-theme .comment-bar .form-control:focus {
+  background-color: var(--scam-field);
+  color: var(--scam-cream);
+  border-color: var(--scam-green);
+  box-shadow: 0 0 0 .2rem rgba(135, 241, 80, .25);
+}
+
+/* Send, emoji and image buttons all share the send-arrow green */
+.scam-theme .comment-bar .btn-link,
+.scam-theme .comment-bar .btn-link:hover { color: var(--scam-green) !important; }

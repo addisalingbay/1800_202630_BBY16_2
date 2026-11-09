@@ -1,5 +1,5 @@
-import '../../for_you_page/for-you.css';
-import forYouHtml from '../../for_you_page/for-you.html?raw';
+import '../css/for-you.css';
+import forYouHtml from '../html/for-you.html?raw';
 
 async function mountForYou() {
   const mount = document.getElementById('forYouMount');
@@ -14,7 +14,7 @@ async function mountForYou() {
     document.body.appendChild(document.importNode(overlay, true));
   });
 
-  await import('../../for_you_page/for-you.js');
+  await import('./for-you.js');
 }
 
 mountForYou();

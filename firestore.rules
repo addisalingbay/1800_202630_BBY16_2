@@ -5,12 +5,17 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // The signed-in user's "I liked this post" marker for a given post.
+    function likeDoc(postId) {
+      return /databases/$(database)/documents/users/$(request.auth.uid)/likedPosts/$(postId);
+    }
+
     function validPost() {
       return request.resource.data.keys().hasAll([
           'uid', 'username', 'title', 'description', 'tags', 'imageUrl', 'createdAt'
         ])
         && request.resource.data.keys().hasOnly([
-          'uid', 'username', 'title', 'description', 'tags', 'imageUrl', 'createdAt'
+          'uid', 'username', 'title', 'description', 'tags', 'imageUrl', 'createdAt', 'likeCount'
         ])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.username is string
@@ -26,7 +31,8 @@ service cloud.firestore {
         && (request.resource.data.imageUrl == null
           || (request.resource.data.imageUrl is string
             && request.resource.data.imageUrl.size() <= 2048))
-        && request.resource.data.createdAt == request.time;
+        && request.resource.data.createdAt == request.time
+        && (!('likeCount' in request.resource.data) || request.resource.data.likeCount == 0);
     }
 
     function validComment() {
@@ -51,8 +57,22 @@ service cloud.firestore {
       // can create a post whose uid matches their own Firebase Auth UID.
       allow read: if signedIn();
       allow create: if signedIn() && validPost();
-      // Editing/deleting is intentionally disabled until those features are added.
-      allow update, delete: if false;
+      // The only edit allowed is a like/unlike: likeCount may change by exactly
+      // 1, and only in the same batch that creates/deletes the user's own
+      // users/{uid}/likedPosts/{postId} marker (so one like per user per post).
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount'])
+        && request.resource.data.likeCount is int
+        && request.resource.data.likeCount >= 0
+        && (
+          (request.resource.data.likeCount == resource.data.get('likeCount', 0) + 1
+            && !exists(likeDoc(postId)) && existsAfter(likeDoc(postId)))
+          ||
+          (request.resource.data.likeCount == resource.data.get('likeCount', 0) - 1
+            && exists(likeDoc(postId)) && !existsAfter(likeDoc(postId)))
+        );
+      // Deleting posts is intentionally disabled until that feature is added.
+      allow delete: if false;
 
       match /comments/{commentId} {
         allow read: if signedIn();
@@ -60,6 +80,16 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/posts/$(postId))
           && validComment();
         allow update, delete: if false;
+      }
+    }
+
+    // Per-user data: signup writes users/{uid}; createPost writes
+    // users/{uid}/createdPosts/{postId}. Users may only touch their own.
+    match /users/{userId} {
+      allow read, write: if signedIn() && request.auth.uid == userId;
+
+      match /{document=**} {
+        allow read, write: if signedIn() && request.auth.uid == userId;
       }
     }
   }
