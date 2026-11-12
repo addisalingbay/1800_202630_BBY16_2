@@ -160,7 +160,7 @@ body.post-details-open { overflow: hidden; }
 .scam-theme .post-image.bg-secondary-subtle { background-color: #D9D9D9 !important; }
 
 /* Tags and the comments count (the grey "Copied" bubble is left alone) */
-.scam-theme .badge.text-bg-secondary:not(.share-toast) {
+.scam-theme .badge.text-bg-secondary:not(.share-toast):not(.saved-toast) {
   background-color: var(--scam-green) !important;
   color: var(--scam-green-dark) !important;
 }
@@ -188,3 +188,146 @@ body.post-details-open { overflow: hidden; }
 /* Send, emoji and image buttons all share the send-arrow green */
 .scam-theme .comment-bar .btn-link,
 .scam-theme .comment-bar .btn-link:hover { color: var(--scam-green) !important; }
+
+/* A saved (filled) bookmark takes the same green as a liked heart */
+.scam-theme .saved-active,
+.scam-theme .saved-active:hover { color: var(--scam-green) !important; }
+
+/* "Post saved" pop-up in the middle of the screen */
+.saved-toast {
+  font-size: .95rem;
+  padding: .6rem 1.1rem;
+  white-space: nowrap;
+  z-index: 1090;
+}
+
+/* =====================================================================
+   "save to..." sheet (Bootstrap Offcanvas, slides up from the bottom)
+   ===================================================================== */
+.scam-theme .offcanvas-backdrop {
+  --bs-backdrop-zindex: 1065;
+  --bs-backdrop-opacity: .55;
+}
+
+.scam-theme .folder-sheet {
+  --bs-offcanvas-zindex: 1070;
+  --bs-offcanvas-bg: #181818;
+  --bs-offcanvas-color: #E3F6BE;
+  --bs-offcanvas-border-color: #2A3A20;
+  --bs-offcanvas-border-width: 1px;
+  width: 100%;
+  max-width: 560px;
+  margin-inline: auto;
+  border-radius: 1.25rem 1.25rem 0 0;
+  transition: transform .3s ease-in-out, height .25s ease;
+}
+.scam-theme .folder-sheet.is-dragging,
+.scam-theme .folder-sheet.is-instant { transition: transform .3s ease-in-out; }
+
+.folder-sheet-top { position: relative; flex: 0 0 auto; height: 2.5rem; }
+.folder-sheet-handle {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  cursor: grab;
+}
+.folder-sheet-handle:active { cursor: grabbing; }
+.folder-sheet-handle:focus-visible { outline: 2px solid #87F150; outline-offset: -2px; border-radius: 1rem; }
+.folder-sheet-grip { width: 2.5rem; height: .3rem; border-radius: 1rem; background: #87F150; }
+
+.scam-theme .folder-sheet-back,
+.scam-theme .folder-sheet-remove {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  padding: 0 .25rem;
+  color: #E3F6BE;
+  text-decoration: none;
+}
+.folder-sheet-back { left: .9rem; font-size: 1.6rem; line-height: 1; }
+.folder-sheet-remove { right: .9rem; font-size: .85rem; }
+
+.folder-sheet-title {
+  flex: 0 0 auto;
+  margin: 0 0 .75rem;
+  text-align: center;
+  font-weight: 700;
+  color: #E3F6BE;
+}
+
+.folder-sheet-list { flex: 1 1 auto; min-height: 0; padding: 0 1.25rem; overflow: hidden; }
+.folder-sheet.is-expanded .folder-sheet-list { overflow-y: auto; overscroll-behavior: contain; }
+.folder-sheet-draft:not(:empty) { margin-bottom: .5rem; }
+.folder-sheet-none { color: rgba(227, 246, 190, .75); padding: 1rem 0; }
+.folder-sheet-hint { flex: 0 0 auto; color: rgba(227, 246, 190, .65); padding-top: .4rem; }
+.folder-sheet-footer { flex: 0 0 auto; padding: .75rem 1.25rem 1.1rem; }
+
+.scam-theme .folder-row {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #E3F6BE;
+  font-weight: 700;
+  text-align: left;
+}
+.folder-row:focus-visible { outline: 2px solid #87F150; outline-offset: 2px; border-radius: .6rem; }
+.folder-row-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 0;
+  border-radius: .6rem;
+  background: #87F150;
+  color: #14210D;
+}
+.folder-row-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder-row-check { color: #87F150; font-size: 1.15rem; }
+
+.folder-row-draft { align-items: flex-start; cursor: pointer; }
+.folder-row-draft .folder-row-confirm { opacity: .55; cursor: pointer; }
+.folder-row-draft.has-name .folder-row-confirm { opacity: 1; }
+.folder-row-hint { color: rgba(227, 246, 190, .65); font-weight: 400; }
+.min-w-0 { min-width: 0; }
+.scam-theme .folder-name-input {
+  background-color: #232724;
+  color: #E3F6BE;
+  border-color: transparent;
+  font-weight: 700;
+}
+.scam-theme .folder-name-input::placeholder { color: rgba(227, 246, 190, .6); font-weight: 400; }
+.scam-theme .folder-name-input:focus {
+  background-color: #232724;
+  color: #E3F6BE;
+  border-color: #87F150;
+  box-shadow: 0 0 0 .2rem rgba(135, 241, 80, .25);
+}
+
+.scam-theme .folder-sheet-create {
+  padding: .85rem 1rem;
+  border: 0;
+  border-radius: 1rem;
+  background-color: #87F150;
+  color: #14210D;
+  font-weight: 700;
+}
+.scam-theme .folder-sheet-create:hover,
+.scam-theme .folder-sheet-create:focus-visible,
+.scam-theme .folder-sheet-create:active {
+  background-color: #E3F6BE;
+  color: #14210D;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scam-theme .folder-sheet { transition-duration: 0s !important; }
+}

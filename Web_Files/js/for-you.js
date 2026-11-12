@@ -1,4 +1,5 @@
 import { auth, db } from './firebaseConfig.js';
+import { isSaved, onSavedChange, openFolderSheet, startSavedListeners, stopSavedListeners } from './saved.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
   addDoc,
@@ -22,6 +23,10 @@ let commentsTrigger = null;
 let lastTrigger = null;
 let stopCommentsListener = null;
 let stopPostsListener = null;
+
+// Lets other pages (the Saved page) read the posts and react when they change.
+let postsLoaded = false;
+const postsSubscribers = new Set();
 
 // Likes: ids of the posts the signed-in user has liked (live from
 // users/{uid}/likedPosts), plus posts with a like write still in flight.
@@ -87,6 +92,29 @@ function tagsHtml(tags) {
   ).join('')}</div>`;
 }
 
+// ---------------------------------------------------------------------
+// Bookmark (save to a folder)
+// ---------------------------------------------------------------------
+function bookmarkButtonHtml(postId) {
+  const saved = isSaved(postId);
+  return `<button type="button" class="btn btn-link p-0 fs-4 lh-1 post-action ${saved ? 'saved-active' : 'text-body'}" data-bookmark-button data-bookmark-post="${escapeHtml(postId)}" aria-label="${saved ? 'Saved. Change folder' : 'Save post'}" aria-pressed="${saved}"><i class="bi ${saved ? 'bi-bookmark-fill' : 'bi-bookmark'}"></i></button>`;
+}
+
+// Fill / empty every bookmark icon on screen (feed cards and the details header).
+function syncBookmarkUI() {
+  document.querySelectorAll('[data-bookmark-button]').forEach((button) => {
+    const postId = button.dataset.bookmarkPost || activePostId;
+    const saved = Boolean(postId) && isSaved(postId);
+    button.classList.toggle('saved-active', saved);
+    button.classList.toggle('text-body', !saved);
+    button.setAttribute('aria-pressed', String(saved));
+    button.setAttribute('aria-label', saved ? 'Saved. Change folder' : 'Save post');
+    const icon = button.querySelector('i');
+    icon.classList.toggle('bi-bookmark-fill', saved);
+    icon.classList.toggle('bi-bookmark', !saved);
+  });
+}
+
 function actionsHtml(post) {
   const liked = likedPostIds.has(post.id);
   return `
@@ -139,7 +167,7 @@ function renderPost(post) {
       <div class="post-avatar"></div>
       <span class="fw-bold flex-grow-1 text-truncate">${escapeHtml(post.username)}</span>
       ${timeHtml(post.createdAt, 'small text-body-secondary')}
-      <button type="button" class="btn btn-link text-body p-0 fs-4 lh-1 post-action" aria-label="Bookmark post"><i class="bi bi-bookmark"></i></button>
+      ${bookmarkButtonHtml(post.id)}
     </div>
     <div class="px-3 pb-2">
       <h2 class="h5 fw-bold mb-1">${escapeHtml(post.title)}</h2>
@@ -171,6 +199,8 @@ function startPostsFeed() {
     if (snapshot.empty) {
       showFeedMessage('no posts yet');
       sentinel.classList.add('d-none');
+      postsLoaded = true;
+      notifyPostsChanged();
       return;
     }
 
@@ -187,6 +217,8 @@ function startPostsFeed() {
       renderPostDetails(postsById.get(activePostId));
     }
 
+    postsLoaded = true;
+    notifyPostsChanged();
     openDeepLinkedPost();
   }, (error) => {
     console.error('Unable to load posts from Firestore:', error);
@@ -528,6 +560,7 @@ function openPostDetails(postId, triggerElement) {
   if (!post) return;
   lastTrigger = triggerElement || null;
   activePostId = post.id;
+  syncBookmarkUI();
   commentTextarea.value = '';
   syncCommentBox();
   renderPostDetails(post);
@@ -566,6 +599,7 @@ feed.addEventListener('click', (event) => {
   if (button) {
     if (button.matches('[data-like-button]')) toggleLike(card.id);
     else if (button.matches('[data-share-button]')) sharePost(card.id, button);
+    else if (button.matches('[data-bookmark-button]')) openFolderSheet(card.id, button);
     else if (button.matches('[data-open-comments]')) {
       // Open the post details first so closing the comments returns there.
       openPostDetails(card.id, card);
@@ -582,11 +616,40 @@ feed.addEventListener('keydown', (event) => {
   }
 });
 
+// The bookmark in the post details header.
+const detailsBookmark = document.getElementById('post-details-bookmark');
+if (detailsBookmark) {
+  detailsBookmark.addEventListener('click', () => {
+    if (activePostId) openFolderSheet(activePostId, detailsBookmark);
+  });
+}
+onSavedChange(syncBookmarkUI);
+
+function notifyPostsChanged() {
+  postsSubscribers.forEach((callback) => {
+    try { callback(); } catch (error) { console.error(error); }
+  });
+}
+
+// Used by the Saved page.
+export function getPostById(postId) {
+  return postsById.get(postId) || null;
+}
+export function openPostById(postId, trigger) {
+  openPostDetails(postId, trigger);
+}
+export function onPostsChanged(callback) {
+  postsSubscribers.add(callback);
+  if (postsLoaded) callback();
+  return () => postsSubscribers.delete(callback);
+}
+
 onAuthStateChanged(auth, (user) => {
   if (!user) {
     if (stopPostsListener) stopPostsListener();
     stopPostsListener = null;
     stopLikes();
+    stopSavedListeners();
     showFeedMessage('Please sign in to view posts.');
     sentinel.classList.add('d-none');
     syncCommentBox();
@@ -596,5 +659,6 @@ onAuthStateChanged(auth, (user) => {
   if (greetingName) greetingName.textContent = String(user.displayName || user.email || 'there').toUpperCase();
   syncCommentBox();
   startLikesListener(user.uid);
+  startSavedListeners(user.uid);
   startPostsFeed();
 });
