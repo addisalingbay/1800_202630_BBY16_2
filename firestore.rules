@@ -5,6 +5,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
     // The signed-in user's "I liked this post" marker for a given post.
     function likeDoc(postId) {
       return /databases/$(database)/documents/users/$(request.auth.uid)/likedPosts/$(postId);
@@ -85,11 +89,54 @@ service cloud.firestore {
 
     // Per-user data: signup writes users/{uid}; createPost writes
     // users/{uid}/createdPosts/{postId}. Users may only touch their own.
+    // Everything under users/{uid} is private to that user.
     match /users/{userId} {
-      allow read, write: if signedIn() && request.auth.uid == userId;
+      allow read, write: if isOwner(userId);
 
-      match /{document=**} {
-        allow read, write: if signedIn() && request.auth.uid == userId;
+      // Posts this user created (a list that points at posts/{postId}).
+      match /createdPosts/{postId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // The user's "I liked this post" markers (used by the like button).
+      match /likedPosts/{postId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Saved-post folders: { name, createdAt }
+      match /folders/{folderId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && request.resource.data.keys().hasOnly(['name', 'createdAt'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 1
+          && request.resource.data.name.size() <= 40
+          && request.resource.data.createdAt == request.time;
+        // Renaming is the only edit allowed.
+        allow update: if isOwner(userId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 1
+          && request.resource.data.name.size() <= 40;
+        allow delete: if isOwner(userId);
+      }
+
+      // Saved posts: { postId, folderId, savedAt }
+      // The document ID is the post's ID, so a post can be saved only once,
+      // which means in only ONE folder. Saving it again to another folder
+      // overwrites this same document (it moves).
+      match /savedPosts/{postId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && request.resource.data.keys().hasOnly(['postId', 'folderId', 'savedAt'])
+          && request.resource.data.postId == postId
+          && request.resource.data.folderId is string
+          && request.resource.data.savedAt == request.time
+          // the post must exist, and the folder must be one of this user's
+          // (existsAfter also accepts a folder created in the same batch)
+          && exists(/databases/$(database)/documents/posts/$(postId))
+          && existsAfter(/databases/$(database)/documents/users/$(userId)/folders/$(request.resource.data.folderId));
+        allow delete: if isOwner(userId);
       }
     }
   }

@@ -1,7 +1,16 @@
+/* The colours come from the .scam-theme variables in Web_Files/css/for-you.css
+   (green #87F150, cream #E3F6BE, dark green #14210D, dark #181818). */
+
 .feed-width { max-width: 560px; }
 
 .page-bottom-space { padding-bottom: 6rem !important; }
 
+.scam-theme .saved-heading {
+  color: #E3F6BE;
+  border-color: rgba(227, 246, 190, .45) !important;
+}
+
+/* ---- folder tiles on the Saved page: grey cover with a green label bar ---- */
 .folder-tile {
   display: flex;
   flex-direction: column;
@@ -11,32 +20,34 @@
   border: 0;
   overflow: hidden;
   text-align: left;
-  background-color: var(--bs-secondary-bg);
+  background-color: #B3B3B3;
   transition: transform .15s ease;
 }
 .folder-tile:hover { transform: translateY(-2px); }
 .folder-tile:active { transform: scale(.98); }
-.folder-tile:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+.folder-tile:focus-visible { outline: 2px solid #87F150; outline-offset: 2px; }
 
 .folder-cover {
   flex: 1 1 auto;
   min-height: 0;
-  background-color: var(--bs-secondary-bg);
+  background-color: #B3B3B3;
 }
 .folder-cover img { object-fit: cover; display: block; }
 
-.folder-label {
+.scam-theme .folder-label {
   flex: 0 0 auto;
   display: block;
   padding: .55rem .6rem;
-  background-color: var(--bs-tertiary-bg);
+  background-color: #87F150;
+  color: #14210D !important;
   letter-spacing: .01em;
 }
 
+/* ---- folder overlay ---- */
 .folder-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1055;
+  z-index: 1050; /* below the post details (1055) so a post opens on top of it */
   background-color: var(--bs-body-bg);
   transform: translateY(100%);
   visibility: hidden;
@@ -56,18 +67,45 @@ body.folder-open { overflow: hidden; }
   overscroll-behavior: contain;
 }
 
+.scam-theme .folder-empty { color: #E3F6BE; font-size: 1.05rem; }
+
+/* ---- saved post tiles (dark green, bookmark on the top right) ---- */
 .saved-post {
   position: relative;
-  background-color: var(--bs-secondary-bg);
+  background-color: #14210D;
+  border: 1px solid #2A3A20;
   --bs-aspect-ratio: 133%;
+  cursor: pointer;
 }
+.saved-post:hover { border-color: #87F150; }
+.saved-post:focus-visible { outline: 2px solid #87F150; outline-offset: 2px; }
 .saved-post img { object-fit: cover; }
-.saved-post .saved-badge {
-  position: absolute;
-  top: .35rem; right: .4rem;
+
+.saved-post .saved-post-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.4rem .6rem .6rem;
+  text-align: center;
   font-size: .8rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #E3F6BE;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* .ratio stretches every child to fill the tile, so the icon resets that */
+.saved-post .saved-badge {
+  top: .35rem;
+  right: .4rem;
+  left: auto;
+  width: auto;
+  height: auto;
+  font-size: .85rem;
   line-height: 1;
-  color: var(--bs-body-color);
+  color: #87F150;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
