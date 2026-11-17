@@ -1,58 +1,102 @@
-/* Filter panel for the For You feed. Uses Bootstrap theme variables so it
-   follows the app's dark theme automatically. */
+/* Filters panel. Colours come from Bootstrap's theme variables so it
+   matches the rest of the app (dark theme, same cards and buttons). */
 
-.filter-modal {
+.filters-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1060; /* above the bottom navbar (1030) */
-  display: none;
+  z-index: 1060;
+  display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
-.filter-modal.is-open {
-  display: flex;
+.filters-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
 }
 
-.filter-panel {
+.filters-panel {
   width: 100%;
-  max-width: 420px;
+  max-width: 26rem;
   max-height: 100%;
   overflow-y: auto;
-  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.5);
+  transform: translateY(8px);
+  transition: transform 0.2s ease;
 }
 
-/* Same width as the X button so the title stays centred. */
-.filter-header-spacer {
-  width: 2rem;
+.filters-overlay.is-open .filters-panel {
+  transform: none;
 }
 
-.filter-tag-bar {
+.filters-header {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr 2.5rem;
+  align-items: center;
+}
+
+/* The tags bar looks like the other inputs, with the + inside it. */
+.filters-tag-bar {
   min-height: 2.75rem;
 }
 
-/* Tags that are not selected yet (outlined pill). */
-.filter-tag-available {
+.filters-add-tag {
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.filters-tag-available {
   background: transparent;
   color: var(--bs-body-color);
   border: 1px solid var(--bs-border-color);
 }
 
-.filter-tag-available:hover {
+.filters-tag-available:hover,
+.filters-tag-available:focus-visible {
   background: var(--bs-secondary-bg);
+  border-color: var(--bs-secondary-color);
 }
 
-/* Small dot on the filter button while a non-default filter is applied. */
-#filter-button.filter-active::after {
-  content: "";
+/* "Likes:  Ascending [ ]  Descending [ ]" on one row. */
+.filters-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.filters-group > span {
+  margin-right: auto;
+}
+
+/* Small dot on the filter button while filters are applied. */
+.filter-open-button {
+  position: relative;
+}
+
+.filter-open-button.has-filters::after {
+  content: '';
   position: absolute;
   top: 2px;
   right: 2px;
-  width: 11px;
-  height: 11px;
+  width: 0.75rem;
+  height: 0.75rem;
   border-radius: 50%;
   background: var(--bs-primary);
   border: 2px solid var(--bs-body-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filters-overlay,
+  .filters-panel {
+    transition: none;
+  }
 }

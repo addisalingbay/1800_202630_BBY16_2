@@ -1,5 +1,6 @@
 import { auth, db } from './firebaseConfig.js';
 import { isSaved, onSavedChange, openFolderSheet, startSavedListeners, stopSavedListeners } from './saved.js';
+import { defaultFilters, filterAndSortPosts, initFilters } from './filters.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
   addDoc,
@@ -17,6 +18,8 @@ const feed = document.getElementById('post-feed');
 const sentinel = document.getElementById('feed-sentinel');
 
 const postsById = new Map();
+let allPosts = [];                    // every post from Firestore, newest first
+let currentFilters = defaultFilters(); // what the Filters panel last applied
 const commentsByPostId = new Map();
 let activePostId = null;
 let commentsTrigger = null;
@@ -191,25 +194,40 @@ function showFeedMessage(message) {
   feed.appendChild(empty);
 }
 
+// Draws the feed from allPosts using the applied filters.
+// Default (no filters) = every post, latest first.
+function renderFeed() {
+  if (!allPosts.length) {
+    showFeedMessage('no posts yet');
+    return;
+  }
+  const visiblePosts = filterAndSortPosts(allPosts, currentFilters);
+  if (!visiblePosts.length) {
+    showFeedMessage('No posts match your filters.');
+    return;
+  }
+  const fragment = document.createDocumentFragment();
+  visiblePosts.forEach((post) => fragment.appendChild(renderPost(post)));
+  feed.replaceChildren(fragment);
+}
+
+function handleFiltersApplied(filters) {
+  currentFilters = filters;
+  renderFeed();
+  window.scrollTo({ top: 0 });
+}
+
 function startPostsFeed() {
   if (stopPostsListener) stopPostsListener();
   const postsQuery = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
   stopPostsListener = onSnapshot(postsQuery, (snapshot) => {
+    // postsById keeps EVERY post (the Saved page and share links need them
+    // even when a filter hides them from the feed).
     postsById.clear();
-    if (snapshot.empty) {
-      showFeedMessage('no posts yet');
-      sentinel.classList.add('d-none');
-      postsLoaded = true;
-      notifyPostsChanged();
-      return;
-    }
+    allPosts = snapshot.docs.map(normalizePost);
+    allPosts.forEach((post) => postsById.set(post.id, post));
 
-    const fragment = document.createDocumentFragment();
-    snapshot.docs.forEach((postSnapshot) => {
-      const post = normalizePost(postSnapshot);
-      fragment.appendChild(renderPost(post));
-    });
-    feed.replaceChildren(fragment);
+    renderFeed();
     sentinel.classList.add('d-none');
 
     // Keep the open details view synchronized if the active post changes.
@@ -219,7 +237,7 @@ function startPostsFeed() {
 
     postsLoaded = true;
     notifyPostsChanged();
-    openDeepLinkedPost();
+    if (allPosts.length) openDeepLinkedPost();
   }, (error) => {
     console.error('Unable to load posts from Firestore:', error);
     showFeedMessage('Unable to load posts. Please refresh and try again.');
@@ -658,7 +676,11 @@ onAuthStateChanged(auth, (user) => {
   const greetingName = document.getElementById('greeting-username');
   const greetingDiv = document.getElementById(`greeting`)
   if (greetingName) greetingName.textContent = String(user.displayName || user.email || 'there').toUpperCase();
-  greetingDiv.insertAdjacentHTML(`beforeend`, `<button><img src="../../images/filter.png" width="45px"></button>`)
+  // Add the filter button once (this callback can run more than once).
+  if (!document.getElementById('filter-open')) {
+    greetingDiv.insertAdjacentHTML(`beforeend`, `<button type="button" id="filter-open" class="filter-open-button" aria-label="Open filters" aria-haspopup="dialog"><img src="../../images/filter.png" width="45px" alt=""></button>`);
+    initFilters(document.getElementById('filter-open'), handleFiltersApplied);
+  }
   syncCommentBox();
   startLikesListener(user.uid);
   startSavedListeners(user.uid);
