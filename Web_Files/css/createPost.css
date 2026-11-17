@@ -12,7 +12,7 @@ body {
   height: 32px;
   flex: 0 0 auto;
   border-radius: 50%;
-  background: #181818;
+  background: #000000;
   border: 1px solid #2A3A20;
 }
 .scam-theme .card-header .text-body-secondary {
@@ -40,7 +40,7 @@ body {
 /* Tag picker + image link panels */
 #tagSection,
 #imageLinkSection {
-  background: #181818 !important;
+  background: #000000 !important;
   border: 1px solid #2A3A20;
 }
 #imageUrl {
@@ -89,7 +89,7 @@ body {
 #returnButton {
   --bs-btn-color: #E3F6BE;
   --bs-btn-border-color: rgba(227, 246, 190, 0.35);
-  --bs-btn-hover-color: #181818;
+  --bs-btn-hover-color: #000000;
   --bs-btn-hover-bg: #E3F6BE;
   --bs-btn-hover-border-color: #E3F6BE;
   --bs-btn-active-color: #181818;
@@ -99,16 +99,23 @@ body {
 
 /* Green primary button: Post */
 #createPostButton {
-  --bs-btn-color: #181818;
+  --bs-btn-color: #000000;
   --bs-btn-bg: #87F150;
   --bs-btn-border-color: #87F150;
-  --bs-btn-hover-color: #181818;
+  --bs-btn-hover-color: #000000;
   --bs-btn-hover-bg: #9bf56d;
   --bs-btn-hover-border-color: #9bf56d;
-  --bs-btn-active-color: #181818;
+  --bs-btn-active-color: #000000;
   --bs-btn-active-bg: #6fd93d;
   --bs-btn-active-border-color: #6fd93d;
-  --bs-btn-disabled-color: #181818;
+  --bs-btn-disabled-color: #000000;
   --bs-btn-disabled-bg: #87F150;
   --bs-btn-disabled-border-color: #87F150;
+}
+
+.scam-theme {
+  --bs-body-bg: #181818;
+  --bs-body-bg-rgb: 24, 24, 24;
+  --bs-body-color: #E3F6BE;
+  --bs-body-color-rgb: 227, 246, 190;
 }

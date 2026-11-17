@@ -25,6 +25,10 @@ h1 {
   filter: brightness(0) saturate(100%) invert(38.1%) sepia(13.1%) saturate(417.7%) hue-rotate(38.8deg) brightness(202.5%) contrast(147.7%);
 }
 
+#topBar{
+  display: grid;
+  grid-template-columns: 0fr 5fr 1fr;
+}
 .scam-theme #mainHeading {
   color: #87F150;
   font-style: italic;
@@ -47,4 +51,9 @@ h1 {
 .scam-theme .navbar .nav-link:focus,
 .scam-theme .navbar .nav-link p {
   color: #E3F6BE;
+}
+
+#greeting button{
+  float: right;
+
 }
