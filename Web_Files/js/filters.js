@@ -1,4 +1,4 @@
-import '../css/filters.css';
+
 import { db } from './firebaseConfig.js';
 import { doc, getDoc } from 'firebase/firestore';
 

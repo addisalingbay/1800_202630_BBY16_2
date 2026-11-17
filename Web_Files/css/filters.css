@@ -92,8 +92,18 @@
   border-radius: 50%;
   background: var(--bs-primary);
   border: 2px solid var(--bs-body-bg);
+
+
 }
 
+button{
+  background: none;
+  border: none;
+}
+
+button img{
+  filter: brightness(0) saturate(100%) invert(38.1%) sepia(13.1%) saturate(417.7%) hue-rotate(38.8deg) brightness(202.5%) contrast(147.7%);
+}
 @media (prefers-reduced-motion: reduce) {
   .filters-overlay,
   .filters-panel {
