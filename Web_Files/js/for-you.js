@@ -656,7 +656,9 @@ onAuthStateChanged(auth, (user) => {
     return;
   }
   const greetingName = document.getElementById('greeting-username');
+  const greetingDiv = document.getElementById(`greeting`)
   if (greetingName) greetingName.textContent = String(user.displayName || user.email || 'there').toUpperCase();
+  greetingDiv.insertAdjacentHTML(`beforeend`, `<button><img src="../../images/filter.png" width="45px"></button>`)
   syncCommentBox();
   startLikesListener(user.uid);
   startSavedListeners(user.uid);

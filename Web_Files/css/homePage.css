@@ -48,3 +48,8 @@ h1 {
 .scam-theme .navbar .nav-link p {
   color: #E3F6BE;
 }
+
+#greeting button{
+  float: right;
+
+}
