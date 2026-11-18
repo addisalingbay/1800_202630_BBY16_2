@@ -680,7 +680,7 @@ onAuthStateChanged(auth, (user) => {
   if (!document.getElementById('filter-open') && window.location.pathname.split("/").pop() === 'for-you.html') {
     greetingDiv.insertAdjacentHTML(`beforeend`, `<button type="button" id="filter-open" class="filter-open-button" aria-label="Open filters" aria-haspopup="dialog"><img src="../../images/filter.png" width="45px" alt=""></button>`);
     initFilters(document.getElementById('filter-open'), handleFiltersApplied);
-  }
+  } // this only shows in the home page 
   syncCommentBox();
   startLikesListener(user.uid);
   startSavedListeners(user.uid);
