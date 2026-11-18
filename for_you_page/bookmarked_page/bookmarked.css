@@ -1,9 +1,13 @@
 /* The colours come from the .scam-theme variables in Web_Files/css/for-you.css
    (green #87F150, cream #E3F6BE, dark green #14210D, dark #181818). */
 
-.feed-width { max-width: 560px; }
+.feed-width {
+  max-width: 560px;
+}
 
-.page-bottom-space { padding-bottom: 6rem !important; }
+.page-bottom-space {
+  padding-bottom: 6rem !important;
+}
 
 .scam-theme .saved-heading {
   color: #E3F6BE;
@@ -23,16 +27,30 @@
   background-color: #B3B3B3;
   transition: transform .15s ease;
 }
-.folder-tile:hover { transform: translateY(-2px); }
-.folder-tile:active { transform: scale(.98); }
-.folder-tile:focus-visible { outline: 2px solid #87F150; outline-offset: 2px; }
+
+.folder-tile:hover {
+  transform: translateY(-2px);
+}
+
+.folder-tile:active {
+  transform: scale(.98);
+}
+
+.folder-tile:focus-visible {
+  outline: 2px solid #87F150;
+  outline-offset: 2px;
+}
 
 .folder-cover {
   flex: 1 1 auto;
   min-height: 0;
   background-color: #B3B3B3;
 }
-.folder-cover img { object-fit: cover; display: block; }
+
+.folder-cover img {
+  object-fit: cover;
+  display: block;
+}
 
 .scam-theme .folder-label {
   flex: 0 0 auto;
@@ -47,19 +65,23 @@
 .folder-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1050; /* below the post details (1055) so a post opens on top of it */
+  z-index: 1050;
+  /* below the post details (1055) so a post opens on top of it */
   background-color: var(--bs-body-bg);
   transform: translateY(100%);
   visibility: hidden;
   transition: transform .4s cubic-bezier(.32, .72, 0, 1), visibility 0s linear .4s;
 }
+
 .folder-overlay.is-open {
   transform: translateY(0);
   visibility: visible;
   transition: transform .4s cubic-bezier(.32, .72, 0, 1), visibility 0s linear 0s;
 }
 
-body.folder-open { overflow: hidden; }
+body.folder-open {
+  overflow: hidden;
+}
 
 .folder-scroll {
   min-height: 0;
@@ -67,7 +89,10 @@ body.folder-open { overflow: hidden; }
   overscroll-behavior: contain;
 }
 
-.scam-theme .folder-empty { color: #E3F6BE; font-size: 1.05rem; }
+.scam-theme .folder-empty {
+  color: #E3F6BE;
+  font-size: 1.05rem;
+}
 
 /* ---- saved post tiles (dark green, bookmark on the top right) ---- */
 .saved-post {
@@ -77,9 +102,19 @@ body.folder-open { overflow: hidden; }
   --bs-aspect-ratio: 133%;
   cursor: pointer;
 }
-.saved-post:hover { border-color: #87F150; }
-.saved-post:focus-visible { outline: 2px solid #87F150; outline-offset: 2px; }
-.saved-post img { object-fit: cover; }
+
+.saved-post:hover {
+  border-color: #87F150;
+}
+
+.saved-post:focus-visible {
+  outline: 2px solid #87F150;
+  outline-offset: 2px;
+}
+
+.saved-post img {
+  object-fit: cover;
+}
 
 .saved-post .saved-post-text {
   display: flex;
@@ -108,8 +143,16 @@ body.folder-open { overflow: hidden; }
   pointer-events: none;
 }
 
+#filters-overlay {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
+
   .folder-overlay,
   .folder-overlay.is-open,
-  .folder-tile { transition-duration: 0s !important; transition-delay: 0s !important; }
+  .folder-tile {
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
 }
