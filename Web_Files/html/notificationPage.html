@@ -12,64 +12,50 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="heroes.css" rel="stylesheet" />
+    <link href="../css/notifications.css" rel="stylesheet" />
 
     <!-- When this page is shown inside the homepage, keep its background transparent and let the
          homepage bell act as the "Open Notifications" button. Opened on its own, it behaves as before. -->
     <script>if (window.parent !== window) document.documentElement.classList.add('embedded');</script>
     <style>
-        .embedded, .embedded body { background: transparent !important; }
-        .embedded #openNotifications { display: none; }
+        .embedded,
+        .embedded body {
+            background: transparent !important;
+        }
+
+        .embedded #openNotifications {
+            display: none;
+        }
     </style>
 
 </head>
+
 <body>
 
-    <button type="button" id="openNotifications" class="btn-solid theme-primary" commandfor="invokerDrawer" command="show-modal">
+    <button type="button" id="openNotifications" class="btn-solid theme-primary" commandfor="invokerDrawer"
+        command="show-modal">
         Open Notifications
     </button>
-    
+
     <dialog class="drawer drawer-start" tabindex="-1" id="invokerDrawer" aria-labelledby="invokerDrawerLabel">
         <div class="drawer-header">
             <h5 class="drawer-title" id="invokerDrawerLabel">Notifications</h5>
-            <button type="button" class="btn-close" commandfor="invokerDrawer" command="close" aria-label="Close"></button>
+            <button type="button" class="btn-close" commandfor="invokerDrawer" command="close"
+                aria-label="Close"></button>
         </div>
         <div class="drawer-body">
-            <div role="alert" class="alert theme-success">
+            <button type="button" class="btn btn-success w-100 mb-3" id="clear-notifications">
+                Clear All Notifications
+            </button>
 
-                <vstack>
-                    <button type="button" class="btn btn-success" id="clear-notifications" data-bs-dismiss="alert" aria-label="Close">
-                        Clear All Notifications
-                    </button>
+            <!-- Notifications are populated from the Firestore posts collection. -->
+            <div id="notification-list" aria-live="polite"></div>
 
-                    <div class="alert theme-success" role="alert">
-                        <vstack>
-                            <h4 class="alert-heading mb-2">[Post Title will go here]</h4>
-                            <p>[post description will go here and <a href="#" class="alert-link">Link takes you to homepage right now, change it to post afterwords</a> ]</p>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            <hr class="my-3">
-                        </vstack>
-                    </div>
-
-                    <div class="alert theme-success" role="alert">
-                        <vstack>
-                            <h4 class="alert-heading mb-2">[Post Title will go here]</h4>
-                            <p>[post description will go here and <a href="#" class="alert-link">Link takes you to homepage right now, change it to post afterwords</a> ]</p>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            <hr class="my-3">
-                        </vstack>
-                    </div>
-                </vstack>
-            </div>
-
-            <div>
-                <p>No more notifications.</p>
-            </div>
-                
+            <p id="notifications-empty" class="text-center">No more notifications.</p>
         </div>
     </dialog>
 
     <script src="../assets/dist/js/bootstrap.bundle.min.js" class="astro-vvvwv3sm"></script>
-    <script src="js/notifications.js"></script>
 
     <script>
         (function () {
@@ -92,8 +78,142 @@
         })();
     </script>
 
+
+    <!-- Real-time post notifications. Kept in this HTML file as requested. -->
+    <script type="module">
+        import { db } from '../js/firebaseConfig.js';
+        import {
+            collection,
+            onSnapshot,
+            orderBy,
+            query
+        } from 'firebase/firestore';
+
+        const notificationList = document.getElementById('notification-list');
+        const emptyMessage = document.getElementById('notifications-empty');
+        const clearButton = document.getElementById('clear-notifications');
+
+        function updateEmptyMessage() {
+            emptyMessage.hidden = notificationList.children.length > 0;
+        }
+
+        function openPost(postId) {
+            // for-you.js already supports ?post=<postId> deep links.
+            const destination = new URL('homePage.html', window.location.href);
+            destination.searchParams.set('post', postId);
+            window.parent.location.href = destination.href;
+        }
+
+        function renderNotification(postSnapshot, prepend = true) {
+            const postId = postSnapshot.id;
+
+            // Avoid adding the same post twice if Firestore sends another snapshot.
+            if (notificationList.querySelector(`[data-post-id="${CSS.escape(postId)}"]`)) {
+                return;
+            }
+
+            const post = postSnapshot.data();
+            const notification = document.createElement('div');
+            notification.className = 'alert theme-success mb-3 notification';
+            notification.setAttribute('role', 'alert');
+            notification.dataset.postId = postId;
+
+            const title = document.createElement('h4');
+            title.className = 'alert-heading mb-2';
+            title.textContent = post.title || 'New post';
+
+            const author = document.createElement('p');
+            author.className = 'mb-2';
+            author.textContent = `New post by ${post.username || 'User'}`;
+
+            const description = document.createElement('p');
+            description.textContent = post.description || '';
+
+            const viewLink = document.createElement('a');
+            viewLink.href = `homePage.html?post=${encodeURIComponent(postId)}`;
+            viewLink.className = 'alert-link';
+            viewLink.textContent = 'View post';
+            viewLink.addEventListener('click', (event) => {
+                event.preventDefault();
+                openPost(postId);
+            });
+
+            const timestamp = document.createElement('small');
+            timestamp.className = 'd-block text-body-secondary mt-2';
+            if (post.createdAt && typeof post.createdAt.toDate === 'function') {
+                timestamp.textContent = post.createdAt.toDate().toLocaleString();
+            }
+
+            const dismiss = document.createElement('button');
+            dismiss.type = 'button';
+            dismiss.className = 'btn-close';
+            dismiss.setAttribute('aria-label', 'Dismiss notification');
+            dismiss.addEventListener('click', () => {
+                notification.remove();
+                updateEmptyMessage();
+            });
+
+            notification.append(title, author, description, viewLink, timestamp, dismiss);
+            if (prepend) {
+                notificationList.prepend(notification);
+            } else {
+                notificationList.append(notification);
+            }
+            updateEmptyMessage();
+        }
+
+        function startPostNotifications() {
+            const postsQuery = query(
+                collection(db, 'posts'),
+                orderBy('createdAt', 'desc')
+            );
+
+            let isInitialSnapshot = true;
+
+            onSnapshot(postsQuery, (snapshot) => {
+                if (isInitialSnapshot) {
+                    // Show posts already in the feed when the overlay first loads.
+                    notificationList.replaceChildren();
+                    snapshot.docs.forEach((doc) => {
+                        renderNotification(doc, false);
+                    });
+                    isInitialSnapshot = false;
+                    updateEmptyMessage();
+                    return;
+                }
+
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === 'added') {
+                        renderNotification(change.doc);
+                    } else if (change.type === 'removed') {
+                        const existing = notificationList.querySelector(
+                            `[data-post-id="${CSS.escape(change.doc.id)}"]`
+                        );
+                        if (existing) existing.remove();
+                    }
+                });
+
+                updateEmptyMessage();
+            }, (error) => {
+                console.error('Unable to load post notifications:', error);
+                emptyMessage.textContent = 'Unable to load notifications. Please try again.';
+                emptyMessage.hidden = false;
+            });
+        }
+
+        clearButton.addEventListener('click', () => {
+            // This clears the current display only; it does not delete Firestore posts.
+            notificationList.replaceChildren();
+            updateEmptyMessage();
+        });
+
+        startPostNotifications();
+    </script>
+
     <script type="module" src="./src/main.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js" type="module"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js"
+        type="module"></script>
 </body>
+
 </html>
