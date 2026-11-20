@@ -78,7 +78,6 @@
         })();
     </script>
 
-
     <!-- Real-time post notifications. Kept in this HTML file as requested. -->
     <script type="module">
         import { db } from '../js/firebaseConfig.js';
@@ -157,7 +156,7 @@
             if (prepend) {
                 notificationList.prepend(notification);
             } else {
-                notificationList.append(notification);
+                notificationList.append(notification)
             }
             updateEmptyMessage();
         }
