@@ -1,0 +1,26 @@
+/* should make notifications appear vertacaly stacked instead of horazontally*/
+.notification {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 40px 12px 12px;
+}
+
+.notification .btn-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+}
+
+.notification p {
+    margin-bottom: 0;
+}
+
+.notification .alert-heading {
+    margin-bottom: 4px;
+}
