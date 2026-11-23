@@ -11,6 +11,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  where,
   writeBatch
 } from 'firebase/firestore';
 
@@ -36,6 +37,20 @@ const postsSubscribers = new Set();
 const likedPostIds = new Set();
 const pendingLikes = new Set();
 let stopLikesListener = null;
+// NOTE: the "like" data is now the EYE ("I have seen / experienced this"):
+// users/{uid}/likedPosts/{postId} is the user's marker and posts/{postId}.likeCount is the number next to the eye.
+
+// Scam votes (the popup that opens when the eye is long pressed): the signed-in
+// user's own vote on each post, live from users/{uid}/scamVotes.
+const myScamVotes = new Map();        // postId -> 'scam' | 'notScam'
+const pendingScamVotes = new Set();
+let stopScamVotesListener = null;
+let scamPopupPostId = null;           // the post whose popup is open
+
+// Comment thumbs: the user's own reaction on each comment of the open post.
+const myCommentVotes = new Map();     // commentId -> 'up' | 'down'
+const pendingCommentVotes = new Set();
+let stopCommentVotesListener = null;
 
 // Share links look like ...homePage.html?post=<postId>
 let deepLinkPostId = new URLSearchParams(window.location.search).get('post');
@@ -118,15 +133,43 @@ function syncBookmarkUI() {
   });
 }
 
+// ---------------------------------------------------------------------
+// Actions row: eye (+ count), comments (+ count), share
+// ---------------------------------------------------------------------
+// Share of people who voted "scam" and "not a scam" (the two always add up to 100).
+function scamPercentages(post) {
+  const total = post.scamCount + post.notScamCount;
+  if (!total) return { scam: 0, notScam: 0 };
+  const scam = Math.round((post.scamCount / total) * 100);
+  return { scam, notScam: 100 - scam };
+}
+
+// The small bubble that opens on a long press of the eye (no animation).
+function scamPopupHtml(post) {
+  const mine = myScamVotes.get(post.id) || null;
+  const { scam, notScam } = scamPercentages(post);
+  const voteButton = (vote, icon, percent, count, label) => `
+    <button type="button" class="scam-vote btn btn-link ${mine === vote ? 'is-chosen' : ''}" data-scam-vote="${vote}" aria-pressed="${mine === vote}" aria-label="${label}: ${percent}% (${count} ${count === 1 ? 'vote' : 'votes'})" title="${label}: ${count} ${count === 1 ? 'vote' : 'votes'}"><span class="png-icon ${icon}" aria-hidden="true"></span><span>${percent}%</span></button>`;
+  return `
+    <div class="scam-popup position-absolute bottom-100 start-0 d-flex align-items-center gap-2" role="group" aria-label="What do people think of this post?" data-scam-popup>
+      ${voteButton('scam', 'icon-warning', scam, post.scamCount, 'Scam')}
+      ${voteButton('notScam', 'icon-close', notScam, post.notScamCount, 'Not a scam')}
+    </div>`;
+}
+
 function actionsHtml(post) {
-  const liked = likedPostIds.has(post.id);
+  const seen = likedPostIds.has(post.id);
   return `
     <div class="d-flex align-items-center gap-3 fs-5" data-post-id="${escapeHtml(post.id)}">
-      <span class="d-inline-flex align-items-center gap-1">
-        <button type="button" class="btn btn-link p-0 lh-1 post-action ${liked ? 'like-active' : 'text-body'}" data-like-button aria-label="${liked ? 'Unlike' : 'Like'}" aria-pressed="${liked}"><i class="bi ${liked ? 'bi-heart-fill' : 'bi-heart'}"></i></button>
-        <span class="like-count small" data-like-count>${post.likeCount}</span>
+      <span class="position-relative d-inline-flex align-items-center gap-1" data-eye-wrap>
+        <button type="button" class="eye-button btn btn-link p-0 lh-1 post-action ${seen ? 'seen-active' : 'text-body'}" data-eye-button aria-label="${seen ? 'You have seen this. Tap to undo.' : 'I have seen this.'} Hold to see what people think." aria-pressed="${seen}" aria-haspopup="true"><span class="png-icon icon-eyes" aria-hidden="true"></span></button>
+        ${scamPopupPostId === post.id ? scamPopupHtml(post) : ''}
+        <span class="eye-count small" data-eye-count>${post.likeCount}</span>
       </span>
-      <button type="button" class="btn btn-link text-body p-0 lh-1 post-action" data-open-comments aria-label="Comments"><i class="bi bi-chat-square-text"></i></button>
+      <span class="d-inline-flex align-items-center gap-1">
+        <button type="button" class="btn btn-link text-body p-0 lh-1 post-action" data-open-comments aria-label="Comments"><i class="bi bi-chat-square-text"></i></button>
+        <span class="comment-count small" data-comment-count>${post.commentCount}</span>
+      </span>
       <span class="position-relative d-inline-flex">
         <button type="button" class="btn btn-link text-body p-0 lh-1 post-action" data-share-button aria-label="Copy link to post"><i class="bi bi-share-fill"></i></button>
         <span class="share-toast badge rounded-pill text-bg-secondary fw-normal position-absolute top-100 start-50 translate-middle-x mt-1 pe-none fade" role="status" aria-live="polite"></span>
@@ -153,7 +196,10 @@ function normalizePost(snapshot) {
     tags: Array.isArray(data.tags) ? data.tags : [],
     description: data.description || '',
     imageUrl: data.imageUrl || '',
-    likeCount: Math.max(0, Number(data.likeCount) || 0),
+    likeCount: Math.max(0, Number(data.likeCount) || 0),   // people who have seen / experienced it (the eye)
+    commentCount: Math.max(0, Number(data.commentCount) || 0),
+    scamCount: Math.max(0, Number(data.scamCount) || 0),
+    notScamCount: Math.max(0, Number(data.notScamCount) || 0),
     createdAt: asDate(data.createdAt)
   };
 }
@@ -252,24 +298,35 @@ function startPostsFeed() {
 //                                     only ever like a post once.
 // posts/{postId}.likeCount         -> the counter shown next to the heart.
 // Both are changed together in one atomic batch.
-function syncLikeUI() {
+// Updates every actions row on screen (feed cards and the post details):
+// the eye, its count, the comment count and the popup.
+function syncEyeUI() {
   document.querySelectorAll('[data-post-id]').forEach((group) => {
     const post = postsById.get(group.dataset.postId);
-    if (!post) return;
-    const liked = likedPostIds.has(post.id);
-    const button = group.querySelector('[data-like-button]');
-    const icon = button.querySelector('i');
-    button.classList.toggle('like-active', liked);
-    button.classList.toggle('text-body', !liked);
-    button.setAttribute('aria-pressed', String(liked));
-    button.setAttribute('aria-label', liked ? 'Unlike' : 'Like');
-    icon.classList.toggle('bi-heart-fill', liked);
-    icon.classList.toggle('bi-heart', !liked);
-    group.querySelector('[data-like-count]').textContent = String(post.likeCount);
+    const button = group.querySelector('[data-eye-button]');
+    if (!post || !button) return;               // (the Saved page also uses data-post-id on its tiles)
+    const seen = likedPostIds.has(post.id);
+    button.classList.toggle('seen-active', seen);
+    button.classList.toggle('text-body', !seen);
+    button.setAttribute('aria-pressed', String(seen));
+    button.setAttribute('aria-label', `${seen ? 'You have seen this. Tap to undo.' : 'I have seen this.'} Hold to see what people think.`);
+    group.querySelector('[data-eye-count]').textContent = String(post.likeCount);
+    group.querySelector('[data-comment-count]').textContent = String(post.commentCount);
+
+    const open = scamPopupPostId === post.id;
+    const popup = group.querySelector('[data-scam-popup]');
+    if (!open) {
+      if (popup) popup.remove();
+    } else if (popup) {
+      popup.outerHTML = scamPopupHtml(post);
+    } else {
+      button.insertAdjacentHTML('afterend', scamPopupHtml(post));
+    }
   });
 }
 
-async function toggleLike(postId) {
+// "I have seen / experienced this": one tap on, tap again to take it back.
+async function toggleEye(postId) {
   const user = auth.currentUser;
   if (!user || !postsById.has(postId) || pendingLikes.has(postId)) return;
   pendingLikes.add(postId);
@@ -288,11 +345,83 @@ async function toggleLike(postId) {
   try {
     await batch.commit();
   } catch (error) {
-    console.error('Could not update like:', error);
-    alert('Your like could not be saved. Please check your connection and try again.');
+    console.error('Could not update the eye:', error);
+    alert('That could not be saved. Please check your connection and try again.');
   } finally {
     pendingLikes.delete(postId);
-    syncLikeUI();
+    syncEyeUI();
+  }
+}
+
+// ---------------------------------------------------------------------
+// Scam / not scam votes (long press on the eye)
+// ---------------------------------------------------------------------
+// users/{uid}/scamVotes/{postId} -> { postId, vote, votedAt }   one vote per user per post
+// posts/{postId}.scamCount / .notScamCount                      the two counters
+// The marker and the counters change together in one atomic batch.
+function startScamVotesListener(uid) {
+  if (stopScamVotesListener) stopScamVotesListener();
+  stopScamVotesListener = onSnapshot(collection(db, 'users', uid, 'scamVotes'), (snapshot) => {
+    myScamVotes.clear();
+    snapshot.docs.forEach((voteSnapshot) => {
+      const { vote } = voteSnapshot.data();
+      if (vote === 'scam' || vote === 'notScam') myScamVotes.set(voteSnapshot.id, vote);
+    });
+    syncEyeUI();
+  }, (error) => {
+    console.error('Unable to load your scam votes:', error);
+  });
+}
+
+function stopScamVotes() {
+  if (stopScamVotesListener) stopScamVotesListener();
+  stopScamVotesListener = null;
+  myScamVotes.clear();
+  scamPopupPostId = null;
+  syncEyeUI();
+}
+
+function openScamPopup(postId) {
+  if (scamPopupPostId === postId) return;
+  scamPopupPostId = postId;
+  syncEyeUI();
+}
+
+function closeScamPopup() {
+  if (!scamPopupPostId) return;
+  scamPopupPostId = null;
+  syncEyeUI();
+}
+
+async function castScamVote(postId, vote) {
+  const user = auth.currentUser;
+  if (!user || !postsById.has(postId) || pendingScamVotes.has(postId)) return;
+  pendingScamVotes.add(postId);
+
+  const previous = myScamVotes.get(postId) || null;
+  const postRef = doc(db, 'posts', postId);
+  const markerRef = doc(db, 'users', user.uid, 'scamVotes', postId);
+  const counter = (choice) => (choice === 'scam' ? 'scamCount' : 'notScamCount');
+  const batch = writeBatch(db);
+  if (previous === vote) {                       // tapping the same choice again takes the vote back
+    batch.delete(markerRef);
+    batch.update(postRef, { [counter(vote)]: increment(-1) });
+  } else if (previous) {                         // switching sides
+    batch.set(markerRef, { postId, vote, votedAt: serverTimestamp() });
+    batch.update(postRef, { [counter(previous)]: increment(-1), [counter(vote)]: increment(1) });
+  } else {                                       // a first vote
+    batch.set(markerRef, { postId, vote, votedAt: serverTimestamp() });
+    batch.update(postRef, { [counter(vote)]: increment(1) });
+  }
+
+  try {
+    await batch.commit();
+  } catch (error) {
+    console.error('Could not save your vote:', error);
+    alert('Your vote could not be saved. Please check your connection and try again.');
+  } finally {
+    pendingScamVotes.delete(postId);
+    syncEyeUI();
   }
 }
 
@@ -301,7 +430,7 @@ function startLikesListener(uid) {
   stopLikesListener = onSnapshot(collection(db, 'users', uid, 'likedPosts'), (snapshot) => {
     likedPostIds.clear();
     snapshot.docs.forEach((likeSnapshot) => likedPostIds.add(likeSnapshot.id));
-    syncLikeUI();
+    syncEyeUI();
   }, (error) => {
     console.error('Unable to load liked posts:', error);
   });
@@ -311,7 +440,7 @@ function stopLikes() {
   if (stopLikesListener) stopLikesListener();
   stopLikesListener = null;
   likedPostIds.clear();
-  syncLikeUI();
+  syncEyeUI();
 }
 
 // ---------------------------------------------------------------------
@@ -442,14 +571,26 @@ window.addEventListener('resize', () => {
 });
 
 function renderComment(comment) {
+  const mine = myCommentVotes.get(comment.id) || null;
+  const thumb = (vote, icon, count, label) => `
+    <span class="d-inline-flex align-items-center gap-1">
+      <button type="button" class="comment-vote btn btn-link p-0 lh-1 ${mine === vote ? 'vote-active' : 'text-body'}" data-comment-vote="${vote}" aria-pressed="${mine === vote}" aria-label="${label}"><i class="bi ${mine === vote ? `${icon}-fill` : icon}"></i></button>
+      <span class="small">${count}</span>
+    </span>`;
   const element = document.createElement('div');
   element.className = 'comment bg-body-secondary rounded-3 p-3';
   element.dataset.commentId = comment.id;
   element.innerHTML = `
     <div class="d-flex align-items-center gap-2 mb-1">
       <div class="post-avatar post-avatar-sm"></div>
-      <span class="fw-bold small flex-grow-1 text-truncate">${escapeHtml(comment.username)}</span>
-      ${timeHtml(comment.createdAt, 'small text-body-secondary')}
+      <div class="flex-grow-1 min-w-0">
+        <div class="fw-bold small text-truncate">${escapeHtml(comment.username)}</div>
+        ${timeHtml(comment.createdAt, 'small text-body-secondary')}
+      </div>
+      <div class="comment-votes d-flex align-items-center gap-3 fs-5">
+        ${thumb('up', 'bi-hand-thumbs-up', comment.upCount, 'Thumbs up')}
+        ${thumb('down', 'bi-hand-thumbs-down', comment.downCount, 'Thumbs down')}
+      </div>
     </div>
     <p class="comment-text small mb-0">${escapeHtml(comment.text)}</p>`;
   return element;
@@ -471,6 +612,24 @@ function renderComments(comments) {
 function listenToComments(postId) {
   if (stopCommentsListener) stopCommentsListener();
   commentsByPostId.set(postId, []);
+
+  // The user's own thumbs on this post's comments (only this post's, not all of them).
+  if (stopCommentVotesListener) stopCommentVotesListener();
+  stopCommentVotesListener = null;
+  myCommentVotes.clear();
+  if (auth.currentUser) {
+    const votesQuery = query(collection(db, 'users', auth.currentUser.uid, 'commentVotes'), where('postId', '==', postId));
+    stopCommentVotesListener = onSnapshot(votesQuery, (snapshot) => {
+      myCommentVotes.clear();
+      snapshot.docs.forEach((voteSnapshot) => {
+        const { commentId, vote } = voteSnapshot.data();
+        if (vote === 'up' || vote === 'down') myCommentVotes.set(commentId, vote);
+      });
+      if (activePostId === postId) renderComments(commentsByPostId.get(postId) || []);
+    }, (error) => {
+      console.error('Unable to load your comment votes:', error);
+    });
+  }
   const commentsQuery = query(collection(db, 'posts', postId, 'comments'), orderBy('createdAt', 'desc'));
   stopCommentsListener = onSnapshot(commentsQuery, (snapshot) => {
     const comments = snapshot.docs.map((commentSnapshot) => {
@@ -480,6 +639,8 @@ function listenToComments(postId) {
         uid: data.uid,
         username: data.username || 'User',
         text: data.text || '',
+        upCount: Math.max(0, Number(data.upCount) || 0),
+        downCount: Math.max(0, Number(data.downCount) || 0),
         createdAt: asDate(data.createdAt)
       };
     });
@@ -512,12 +673,17 @@ async function submitComment() {
   const postId = activePostId;
   commentSend.disabled = true;
   try {
-    await addDoc(collection(db, 'posts', postId, 'comments'), {
+    // The comment and the post's comment counter are saved together.
+    const commentRef = doc(collection(db, 'posts', postId, 'comments'));   // Firebase makes the ID
+    const batch = writeBatch(db);
+    batch.set(commentRef, {
       uid: user.uid,
       username: user.displayName || user.email || 'User',
       text,
       createdAt: serverTimestamp()
     });
+    batch.update(doc(db, 'posts', postId), { commentCount: increment(1), lastCommentId: commentRef.id });
+    await batch.commit();
     commentTextarea.value = '';
     syncCommentBox();
     commentsOverlayScroll.scrollTop = 0;
@@ -529,6 +695,53 @@ async function submitComment() {
     syncCommentBox();
   }
 }
+// ---------------------------------------------------------------------
+// Comment thumbs up / down
+// ---------------------------------------------------------------------
+// users/{uid}/commentVotes/{postId}_{commentId} -> { postId, commentId, vote, votedAt }
+// posts/{postId}/comments/{commentId}.upCount / .downCount
+// One reaction per user per comment, changed together with the counters in one batch.
+async function castCommentVote(commentId, vote) {
+  const user = auth.currentUser;
+  const postId = activePostId;
+  if (!user || !postId || pendingCommentVotes.has(commentId)) return;
+  pendingCommentVotes.add(commentId);
+
+  const previous = myCommentVotes.get(commentId) || null;
+  const commentRef = doc(db, 'posts', postId, 'comments', commentId);
+  const markerRef = doc(db, 'users', user.uid, 'commentVotes', `${postId}_${commentId}`);
+  const counter = (choice) => (choice === 'up' ? 'upCount' : 'downCount');
+  const batch = writeBatch(db);
+  if (previous === vote) {                       // the same thumb again takes it back
+    batch.delete(markerRef);
+    batch.update(commentRef, { [counter(vote)]: increment(-1) });
+  } else if (previous) {                         // switching thumbs
+    batch.set(markerRef, { postId, commentId, vote, votedAt: serverTimestamp() });
+    batch.update(commentRef, { [counter(previous)]: increment(-1), [counter(vote)]: increment(1) });
+  } else {                                       // a first reaction
+    batch.set(markerRef, { postId, commentId, vote, votedAt: serverTimestamp() });
+    batch.update(commentRef, { [counter(vote)]: increment(1) });
+  }
+
+  try {
+    await batch.commit();
+  } catch (error) {
+    console.error('Could not save your reaction:', error);
+    alert('Your reaction could not be saved. Please check your connection and try again.');
+  } finally {
+    pendingCommentVotes.delete(commentId);
+  }
+}
+
+// One listener per list (the comments are redrawn often, so the click is delegated).
+[commentsList, commentsOverlayList].forEach((list) => {
+  list.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-comment-vote]');
+    const comment = button && button.closest('.comment');
+    if (comment) castCommentVote(comment.dataset.commentId, button.dataset.commentVote);
+  });
+});
+
 commentTextarea.addEventListener('input', syncCommentBox);
 commentSend.addEventListener('click', submitComment);
 window.addEventListener('resize', () => {
@@ -556,9 +769,15 @@ function closeCommentsOverlay() {
 commentsBack.addEventListener('click', closeCommentsOverlay);
 
 detailsPost.addEventListener('click', (event) => {
+  const scamVote = event.target.closest('[data-scam-vote]');
+  if (scamVote) {
+    if (activePostId) castScamVote(activePostId, scamVote.dataset.scamVote);
+    return;
+  }
+  if (event.target.closest('[data-scam-popup]')) return;
   const button = event.target.closest('.post-action');
   if (!button || !activePostId) return;
-  if (button.matches('[data-like-button]')) toggleLike(activePostId);
+  if (button.matches('[data-eye-button]')) handleEyeClick(activePostId);
   else if (button.matches('[data-share-button]')) sharePost(activePostId, button);
   else if (button.matches('[data-open-comments]')) openCommentsOverlay(button);
 });
@@ -577,6 +796,7 @@ function openPostDetails(postId, triggerElement) {
   const post = postsById.get(postId);
   if (!post) return;
   lastTrigger = triggerElement || null;
+  closeScamPopup();
   activePostId = post.id;
   syncBookmarkUI();
   commentTextarea.value = '';
@@ -596,6 +816,10 @@ function closePostDetails() {
   if (commentsOverlay.classList.contains('is-open')) closeCommentsOverlay();
   if (stopCommentsListener) stopCommentsListener();
   stopCommentsListener = null;
+  if (stopCommentVotesListener) stopCommentVotesListener();
+  stopCommentVotesListener = null;
+  myCommentVotes.clear();
+  closeScamPopup();
   activePostId = null;
   overlay.classList.remove('is-open');
   overlay.setAttribute('aria-hidden', 'true');
@@ -613,9 +837,15 @@ document.addEventListener('keydown', (event) => {
 feed.addEventListener('click', (event) => {
   const card = event.target.closest('.post-card');
   if (!card) return;
+  const scamVote = event.target.closest('[data-scam-vote]');
+  if (scamVote) {                                    // a choice in the scam / not scam popup
+    castScamVote(card.id, scamVote.dataset.scamVote);
+    return;
+  }
+  if (event.target.closest('[data-scam-popup]')) return;   // the popup itself never opens the post
   const button = event.target.closest('.post-action');
   if (button) {
-    if (button.matches('[data-like-button]')) toggleLike(card.id);
+    if (button.matches('[data-eye-button]')) handleEyeClick(card.id);
     else if (button.matches('[data-share-button]')) sharePost(card.id, button);
     else if (button.matches('[data-bookmark-button]')) openFolderSheet(card.id, button);
     else if (button.matches('[data-open-comments]')) {
@@ -633,6 +863,78 @@ feed.addEventListener('keydown', (event) => {
     openPostDetails(event.target.id, event.target);
   }
 });
+
+// ---------------------------------------------------------------------
+// Long press on the eye opens the scam / not scam popup
+// ---------------------------------------------------------------------
+const LONG_PRESS_MS = 500;
+let pressTimer = null;
+let longPressHappened = false;
+
+function startLongPress(event) {
+  const eye = event.target.closest('[data-eye-button]');
+  if (!eye || (event.pointerType === 'mouse' && event.button !== 0)) return;
+  const group = eye.closest('[data-post-id]');
+  if (!group) return;
+  longPressHappened = false;
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => {
+    longPressHappened = true;                // the click that follows this press must not count as a tap
+    openScamPopup(group.dataset.postId);
+  }, LONG_PRESS_MS);
+}
+
+function cancelLongPress() {
+  clearTimeout(pressTimer);
+}
+
+// A normal tap on the eye. (Ignored when the press was a long press.)
+function handleEyeClick(postId) {
+  if (longPressHappened) {
+    longPressHappened = false;
+    return;
+  }
+  closeScamPopup();
+  toggleEye(postId);
+}
+
+[feed, detailsPost].forEach((area) => {
+  area.addEventListener('pointerdown', startLongPress);
+  area.addEventListener('pointerup', cancelLongPress);
+  area.addEventListener('pointercancel', cancelLongPress);
+  area.addEventListener('pointerout', (event) => {
+    if (event.target.closest('[data-eye-button]')) cancelLongPress();   // moved away: not a long press
+  });
+  // Phones show a menu on a long press; the eye must not.
+  area.addEventListener('contextmenu', (event) => {
+    if (event.target.closest('[data-eye-button]')) event.preventDefault();
+  });
+  // Keyboard users: Shift + Enter, the Menu key or Arrow Up on the eye opens the popup.
+  area.addEventListener('keydown', (event) => {
+    const eye = event.target.closest('[data-eye-button]');
+    if (!eye) return;
+    const opensPopup = event.key === 'ContextMenu' || event.key === 'ArrowUp' || (event.key === 'Enter' && event.shiftKey);
+    if (!opensPopup) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const group = eye.closest('[data-post-id]');
+    if (group) openScamPopup(group.dataset.postId);
+  });
+});
+
+// Tapping anywhere else closes the popup.
+document.addEventListener('pointerdown', (event) => {
+  if (!scamPopupPostId) return;
+  if (event.target.closest('[data-scam-popup]') || event.target.closest('[data-eye-button]')) return;
+  closeScamPopup();
+});
+
+// Esc closes the popup first (before it can close the post behind it).
+window.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape' || !scamPopupPostId) return;
+  event.stopImmediatePropagation();
+  closeScamPopup();
+}, true);
 
 // The bookmark in the post details header.
 const detailsBookmark = document.getElementById('post-details-bookmark');
@@ -667,6 +969,7 @@ onAuthStateChanged(auth, (user) => {
     if (stopPostsListener) stopPostsListener();
     stopPostsListener = null;
     stopLikes();
+    stopScamVotes();
     stopSavedListeners();
     showFeedMessage('Please sign in to view posts.');
     sentinel.classList.add('d-none');
@@ -684,6 +987,7 @@ onAuthStateChanged(auth, (user) => {
   
   syncCommentBox();
   startLikesListener(user.uid);
+  startScamVotesListener(user.uid);
   startSavedListeners(user.uid);
   startPostsFeed();
 });

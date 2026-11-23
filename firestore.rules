@@ -14,6 +14,88 @@ service cloud.firestore {
       return /databases/$(database)/documents/users/$(request.auth.uid)/likedPosts/$(postId);
     }
 
+    function postPath(postId) {
+      return /databases/$(database)/documents/posts/$(postId);
+    }
+
+    function commentPath(postId, commentId) {
+      return /databases/$(database)/documents/posts/$(postId)/comments/$(commentId);
+    }
+
+    // ---- Scam / not scam votes (long press on the eye) ----
+    // The signed-in user's vote marker for a post: users/{uid}/scamVotes/{postId}
+    function scamVoteDoc(postId) {
+      return /databases/$(database)/documents/users/$(request.auth.uid)/scamVotes/$(postId);
+    }
+    function scamVoteBefore(postId) {
+      return exists(scamVoteDoc(postId)) ? get(scamVoteDoc(postId)).data.vote : 'none';
+    }
+    function scamVoteAfter(postId) {
+      return existsAfter(scamVoteDoc(postId)) ? getAfter(scamVoteDoc(postId)).data.vote : 'none';
+    }
+    // The post's two counters must move by exactly what the vote marker moved by.
+    // It is checked from both sides (the post update AND the marker write), so
+    // neither can be changed on its own.
+    function scamCountsFollow(postId, before, after) {
+      return getAfter(postPath(postId)).data.get('scamCount', 0)
+          == get(postPath(postId)).data.get('scamCount', 0) + (after == 'scam' ? 1 : 0) - (before == 'scam' ? 1 : 0)
+        && getAfter(postPath(postId)).data.get('notScamCount', 0)
+          == get(postPath(postId)).data.get('notScamCount', 0) + (after == 'notScam' ? 1 : 0) - (before == 'notScam' ? 1 : 0)
+        && getAfter(postPath(postId)).data.get('scamCount', 0) >= 0
+        && getAfter(postPath(postId)).data.get('notScamCount', 0) >= 0;
+    }
+
+    // ---- Thumbs up / down on a comment ----
+    // The signed-in user's marker: users/{uid}/commentVotes/{postId}_{commentId}
+    function commentVoteDoc(postId, commentId) {
+      return /databases/$(database)/documents/users/$(request.auth.uid)/commentVotes/$(postId + '_' + commentId);
+    }
+    function commentVoteBefore(postId, commentId) {
+      return exists(commentVoteDoc(postId, commentId)) ? get(commentVoteDoc(postId, commentId)).data.vote : 'none';
+    }
+    function commentVoteAfter(postId, commentId) {
+      return existsAfter(commentVoteDoc(postId, commentId)) ? getAfter(commentVoteDoc(postId, commentId)).data.vote : 'none';
+    }
+    function commentCountsFollow(postId, commentId, before, after) {
+      return getAfter(commentPath(postId, commentId)).data.get('upCount', 0)
+          == get(commentPath(postId, commentId)).data.get('upCount', 0) + (after == 'up' ? 1 : 0) - (before == 'up' ? 1 : 0)
+        && getAfter(commentPath(postId, commentId)).data.get('downCount', 0)
+          == get(commentPath(postId, commentId)).data.get('downCount', 0) + (after == 'down' ? 1 : 0) - (before == 'down' ? 1 : 0)
+        && getAfter(commentPath(postId, commentId)).data.get('upCount', 0) >= 0
+        && getAfter(commentPath(postId, commentId)).data.get('downCount', 0) >= 0;
+    }
+
+    // ---- The three edits a post allows (everything else is blocked) ----
+    // 1. The eye: likeCount moves by exactly 1, with the user's own likedPosts marker.
+    function validEyeChange(postId) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount'])
+        && request.resource.data.likeCount is int
+        && request.resource.data.likeCount >= 0
+        && (
+          (request.resource.data.likeCount == resource.data.get('likeCount', 0) + 1
+            && !exists(likeDoc(postId)) && existsAfter(likeDoc(postId)))
+          ||
+          (request.resource.data.likeCount == resource.data.get('likeCount', 0) - 1
+            && exists(likeDoc(postId)) && !existsAfter(likeDoc(postId)))
+        );
+    }
+    // 2. A scam / not scam vote.
+    function validScamVoteChange(postId) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scamCount', 'notScamCount'])
+        && scamCountsFollow(postId, scamVoteBefore(postId), scamVoteAfter(postId));
+    }
+    // 3. A new comment: commentCount goes up by 1 and lastCommentId points at a
+    //    comment that this same batch creates (written by this user).
+    function validCommentCountChange(postId) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount', 'lastCommentId'])
+        && request.resource.data.commentCount is int
+        && request.resource.data.commentCount == resource.data.get('commentCount', 0) + 1
+        && request.resource.data.lastCommentId is string
+        && !exists(commentPath(postId, request.resource.data.lastCommentId))
+        && existsAfter(commentPath(postId, request.resource.data.lastCommentId))
+        && getAfter(commentPath(postId, request.resource.data.lastCommentId)).data.uid == request.auth.uid;
+    }
+
     function validPost() {
       return request.resource.data.keys().hasAll([
           'uid', 'username', 'title', 'description', 'tags', 'imageUrl', 'createdAt'
@@ -61,29 +143,26 @@ service cloud.firestore {
       // can create a post whose uid matches their own Firebase Auth UID.
       allow read: if signedIn();
       allow create: if signedIn() && validPost();
-      // The only edit allowed is a like/unlike: likeCount may change by exactly
-      // 1, and only in the same batch that creates/deletes the user's own
-      // users/{uid}/likedPosts/{postId} marker (so one like per user per post).
+      // Only the three edits above are allowed: the eye, a scam vote, a new comment.
       allow update: if signedIn()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount'])
-        && request.resource.data.likeCount is int
-        && request.resource.data.likeCount >= 0
-        && (
-          (request.resource.data.likeCount == resource.data.get('likeCount', 0) + 1
-            && !exists(likeDoc(postId)) && existsAfter(likeDoc(postId)))
-          ||
-          (request.resource.data.likeCount == resource.data.get('likeCount', 0) - 1
-            && exists(likeDoc(postId)) && !existsAfter(likeDoc(postId)))
-        );
+        && (validEyeChange(postId) || validScamVoteChange(postId) || validCommentCountChange(postId));
       // Deleting posts is intentionally disabled until that feature is added.
       allow delete: if false;
 
       match /comments/{commentId} {
         allow read: if signedIn();
         allow create: if signedIn()
-          && exists(/databases/$(database)/documents/posts/$(postId))
-          && validComment();
-        allow update, delete: if false;
+          && exists(postPath(postId))
+          && validComment()
+          // a new comment must come with the post's comment counter going up by one
+          && getAfter(postPath(postId)).data.get('lastCommentId', '') == commentId
+          && getAfter(postPath(postId)).data.get('commentCount', 0)
+            == get(postPath(postId)).data.get('commentCount', 0) + 1;
+        // The only edit allowed is a thumbs up / down (upCount and downCount).
+        allow update: if signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upCount', 'downCount'])
+          && commentCountsFollow(postId, commentId, commentVoteBefore(postId, commentId), commentVoteAfter(postId, commentId));
+        allow delete: if false;
       }
     }
 
@@ -98,9 +177,44 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
       }
 
-      // The user's "I liked this post" markers (used by the like button).
+      // The user's "I have seen / experienced this" markers (the eye).
       match /likedPosts/{postId} {
         allow read, write: if isOwner(userId);
+      }
+
+      // The user's scam / not scam vote on a post: { postId, vote, votedAt }
+      // One document per post, so one vote per user per post. The post's counters
+      // have to change in the same batch (see scamCountsFollow).
+      match /scamVotes/{postId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && request.resource.data.keys().hasOnly(['postId', 'vote', 'votedAt'])
+          && request.resource.data.postId == postId
+          && request.resource.data.vote in ['scam', 'notScam']
+          && request.resource.data.votedAt == request.time
+          && exists(postPath(postId))
+          && scamCountsFollow(postId, scamVoteBefore(postId), request.resource.data.vote);
+        allow delete: if isOwner(userId)
+          && scamCountsFollow(postId, resource.data.vote, 'none');
+      }
+
+      // The user's thumbs up / down on a comment: { postId, commentId, vote, votedAt }
+      // The document ID is "{postId}_{commentId}", so one reaction per user per comment.
+      match /commentVotes/{voteKey} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && request.resource.data.keys().hasOnly(['postId', 'commentId', 'vote', 'votedAt'])
+          && request.resource.data.postId is string
+          && request.resource.data.commentId is string
+          && voteKey == request.resource.data.postId + '_' + request.resource.data.commentId
+          && request.resource.data.vote in ['up', 'down']
+          && request.resource.data.votedAt == request.time
+          && exists(commentPath(request.resource.data.postId, request.resource.data.commentId))
+          && commentCountsFollow(request.resource.data.postId, request.resource.data.commentId,
+               commentVoteBefore(request.resource.data.postId, request.resource.data.commentId),
+               request.resource.data.vote);
+        allow delete: if isOwner(userId)
+          && commentCountsFollow(resource.data.postId, resource.data.commentId, resource.data.vote, 'none');
       }
 
       // Saved-post folders: { name, createdAt }

@@ -15,12 +15,6 @@ h1 {
   background-color: var(--bs-secondary-bg);
 }
 
-/* ---------------------------------------------------------------------
-   ScamMedia theme for the homepage / For You page (scoped to
-   body.scam-theme so nothing else changes).
-   Icons are black PNGs; the filter below recolours them to cream
-   #E3F6BE without changing the image files, size or shape.
-   --------------------------------------------------------------------- */
 .scam-theme .imgButton {
   filter: brightness(0) saturate(100%) invert(38.1%) sepia(13.1%) saturate(417.7%) hue-rotate(38.8deg) brightness(202.5%) contrast(147.7%);
 }
@@ -56,4 +50,92 @@ h1 {
 #greeting button{
   float: right;
 
+}
+
+.scam-theme .settings-panel {
+  --bs-offcanvas-zindex: 1070;               /* above the dimmed backdrop */
+  --bs-offcanvas-width: min(100vw, 560px);
+  --bs-offcanvas-bg: #181818;
+  --bs-offcanvas-color: #E3F6BE;
+  --bs-offcanvas-border-width: 0;
+  --bs-offcanvas-transition: transform .45s cubic-bezier(.32, .72, 0, 1);   /* smooth slide */
+  overflow-y: auto;
+}
+
+.scam-theme .settings-banner {
+  height: clamp(12rem, 55vw, 17rem);
+  background-color: #0d2620;
+  background-image: url('../../images/settings_banner.jpg');
+  background-size: cover;
+  background-position: center 33%;
+  background-repeat: no-repeat;
+}
+
+.scam-theme .settings-back {
+  position: absolute;
+  z-index: 1;
+  top: 1.7rem;
+  left: 1.5rem;
+  padding: 0;
+  font-size: 2.3rem;
+  line-height: 1;
+  color: #E3F6BE;
+  text-decoration: none;
+  -webkit-text-stroke: 1.6px currentColor;  
+}
+.scam-theme .settings-back:hover,
+.scam-theme .settings-back:focus-visible { color: #fff; }
+
+.scam-theme .settings-avatar {
+  position: absolute;
+  z-index: 1;
+  right: 1.9rem;
+  bottom: -2.85rem;
+  width: 5.7rem;
+  height: 5.7rem;
+  border-radius: 50%;
+  background-color: #87F150;
+  box-shadow: 0 0 0 .5rem #181818;         
+}
+
+.scam-theme .settings-identity { padding-top: 5rem; }
+.scam-theme .settings-username {
+  min-height: 2.05rem;                       
+  font-size: 1.85rem;
+  line-height: 1.1;
+  letter-spacing: -.01em;
+  color: #E3F6BE;
+  overflow-wrap: anywhere;
+}
+.scam-theme .settings-joined { margin-top: .3rem; font-size: .85rem; color: rgba(227, 246, 190, .85); }
+
+.scam-theme .settings-list { margin-top: 3.4rem; }
+.scam-theme .settings-list li {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
+  height: 2.8rem;
+  font-size: .95rem;
+  color: #E3F6BE;
+  cursor: default;
+}
+.scam-theme .settings-list li i { width: 1.4rem; font-size: 1.2rem; text-align: center; }
+
+.scam-theme .settings-actions { margin: 3.8rem auto 0; width: min(78vw, 19.5rem); }
+.scam-theme .settings-signout {
+  padding: .85rem 1rem;
+  border: 0;
+  border-radius: .75rem;
+  background-color: #87F150;
+  color: #14210D;
+  font-weight: 500;
+}
+.scam-theme .settings-signout:hover,
+.scam-theme .settings-signout:focus-visible,
+.scam-theme .settings-signout:active { background-color: #E3F6BE; color: #14210D; }
+.scam-theme .settings-signout:disabled { background-color: #87F150; color: #14210D; opacity: .6; }
+
+@media (prefers-reduced-motion: reduce) {
+  .scam-theme .settings-panel { --bs-offcanvas-transition: none; }
 }
