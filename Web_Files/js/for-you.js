@@ -973,14 +973,17 @@ onAuthStateChanged(auth, (user) => {
     return;
   }
   const greetingName = document.getElementById('greeting-username');
-  const greetingDiv = document.getElementById(`greeting`)
   if (greetingName) greetingName.textContent = String(user.displayName || user.email || 'there').toUpperCase();
-  // Add the filter button once (this callback can run more than once).
-  if (!document.getElementById('filter-open') && window.location.pathname.split("/").pop() === 'for-you.html') {
-    greetingDiv.insertAdjacentHTML(`beforeend`, `<button type="button" id="filter-open" class="filter-open-button" aria-label="Open filters" aria-haspopup="dialog"><img src="../../images/filter.png" width="45px" alt=""></button>`);
+
+  // Add the filter button once 
+  const greetingDiv = document.getElementById('greeting');
+  const pageName = window.location.pathname.split('/').pop();
+  const showsFilters = pageName === 'for-you.html' || pageName === 'homePage.html';
+  if (greetingDiv && showsFilters && !document.getElementById('filter-open')) {
+    greetingDiv.insertAdjacentHTML('beforeend', `<button type="button" id="filter-open" class="filter-open-button" aria-label="Open filters" aria-haspopup="dialog"><img src="../../images/filter.png" width="45px" alt=""></button>`);
     initFilters(document.getElementById('filter-open'), handleFiltersApplied);
-  } // filter now doesnt show up in the saved page
-  
+  }
+
   syncCommentBox();
   startLikesListener(user.uid);
   startScamVotesListener(user.uid);

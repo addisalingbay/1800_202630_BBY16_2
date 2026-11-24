@@ -67,12 +67,18 @@
     </div>
   </nav>
 
-  <div id="topBar" class="d-flex align-items-center justify-content-center">
+  <div id="topBar" class="row align-items-center" style="grid-template-columns: 1fr auto 1fr;">
+    <button type="button" id="notificationsButton" class="btn col text-start" aria-label="Open notifications" aria-controls="notificationsFrame" aria-expanded="false">
+      <img src="../../images/bell.png" alt="Icon" width="50" height="50" class="me-2 align-middle imgButton">
+    </button>
+
     <h1 id="mainHeading" class="text-center fw-bold my-3">My Posts</h1>
+
   </div>
 
-  <!-- Settings overlay (Bootstrap Offcanvas, slides in from the right). Opened by the Settings icon in the navbar.
-       Only the back arrow and Sign Out do anything; the three rows are display only. -->
+  <iframe id="notificationsFrame" src="notificationPage.html" title="Notifications" hidden
+    class="position-fixed top-0 start-0 w-100 h-100 border-0" style="z-index: 2000;"></iframe>
+
   <div class="offcanvas offcanvas-end settings-panel" tabindex="-1" id="settingsOffcanvas" aria-labelledby="settingsUsername">
     <div class="settings-banner position-relative flex-shrink-0">
       <button type="button" id="settingsBack" class="btn btn-link settings-back" aria-label="Close settings">
@@ -206,6 +212,7 @@
   <script type="module" src="../js/app.js"></script>
   <script type="module" src="../js/myPosts.js"></script>
   <script type="module" src="../js/settings.js"></script>
+  <script type="module" src="../js/notifications.js"></script>
 </body>
 
 </html>
