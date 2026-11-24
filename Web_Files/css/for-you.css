@@ -79,8 +79,8 @@ body.post-details-open { overflow: hidden; }
 
 .comment-bar { padding-bottom: calc(.5rem + env(safe-area-inset-bottom, 0px)) !important; }
 
-.post-description-toggle { cursor: pointer; }
-.post-description-toggle.is-static { cursor: default; }
+.post-description-toggle { cursor: default; }
+.post-description-hint { cursor: pointer; }
 
 .post-description-body {
   position: relative;
