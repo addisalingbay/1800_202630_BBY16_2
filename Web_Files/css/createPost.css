@@ -5,6 +5,11 @@ body {
 .create-wrap {
   max-width: 640px;
 }
+#topBar{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* Header row */
 .post-avatar {
@@ -119,3 +124,4 @@ body {
   --bs-body-color: #E3F6BE;
   --bs-body-color-rgb: 227, 246, 190;
 }
+

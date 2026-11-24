@@ -523,9 +523,9 @@ function renderPostDetails(post) {
       <div class="px-3 pb-2"><h2 class="h5 fw-bold mb-1">${escapeHtml(post.title)}</h2>${tagsHtml(post.tags)}</div>
       ${hasPhoto ? imageHtml(post, 'ratio-1x1') : ''}
       <div class="px-3 py-2">${actionsHtml(post)}</div>
-      <div class="post-description-toggle px-3 pb-3" role="button" tabindex="0" aria-expanded="false">
+      <div class="post-description-toggle px-3 pb-3">
         <div class="post-description-body small">${escapeHtml(post.description)}</div>
-        <div class="post-description-hint small text-body-secondary mt-1">Show more</div>
+        <button type="button" class="post-description-hint btn btn-link p-0 small text-body-secondary mt-1" aria-expanded="false">Show more</button>
       </div>
     </article>`;
   setupDescription(detailsPost.querySelector('.post-description-toggle'));
@@ -543,25 +543,21 @@ function setupDescription(toggle) {
       body.style.height = 'auto';
       body.classList.remove('is-fading');
       toggle.classList.add('is-static');
-      toggle.removeAttribute('role');
-      toggle.removeAttribute('tabindex');
       hint.classList.add('d-none');
       return;
     }
     body.style.height = `${expanded ? body.scrollHeight : collapsedHeight()}px`;
     body.classList.toggle('is-fading', !expanded);
     hint.textContent = expanded ? 'Show less' : 'Show more';
-    toggle.setAttribute('aria-expanded', String(expanded));
+    hint.classList.remove('d-none');
+    hint.setAttribute('aria-expanded', String(expanded));
   }
   function flip() {
     if (!isExpandable()) return;
     expanded = !expanded;
     apply();
   }
-  toggle.addEventListener('click', flip);
-  toggle.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); flip(); }
-  });
+  hint.addEventListener('click', flip);
   toggle._reflow = apply;
   apply();
 }
@@ -983,7 +979,8 @@ onAuthStateChanged(auth, (user) => {
   if (!document.getElementById('filter-open') && window.location.pathname.split("/").pop() === 'for-you.html') {
     greetingDiv.insertAdjacentHTML(`beforeend`, `<button type="button" id="filter-open" class="filter-open-button" aria-label="Open filters" aria-haspopup="dialog"><img src="../../images/filter.png" width="45px" alt=""></button>`);
     initFilters(document.getElementById('filter-open'), handleFiltersApplied);
-  }
+  } // filter now doesnt show up in the saved page
+  
   syncCommentBox();
   startLikesListener(user.uid);
   startScamVotesListener(user.uid);
