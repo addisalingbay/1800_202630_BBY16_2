@@ -200,6 +200,24 @@ function updateEmptyMessage() {
   emptyMessage.hidden = notificationList.children.length > 0;
 }
 
+// Receive notification status from the notification iframe
+window.addEventListener('message', (event) => {
+  // Only accept messages from our notification iframe
+  if (event.source !== frame.contentWindow) return;
+
+  if (!event.data || event.data.type !== 'notification-status') return;
+
+  const bellImage = bell.querySelector('img');
+
+  if (!bellImage) return;
+
+  if (event.data.hasNotifications) {
+    bellImage.src = '../../images/bell_notif.png';
+  } else {
+    bellImage.src = '../../images/bell.png';
+  }
+});
+
 // Clear All button.
 clearButton.addEventListener('click', clearNotifications);
 

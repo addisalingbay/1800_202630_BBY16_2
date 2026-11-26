@@ -93,7 +93,21 @@
         const clearButton = document.getElementById('clear-notifications');
 
         function updateEmptyMessage() {
-            emptyMessage.hidden = notificationList.children.length > 0;
+            const hasNotifications = notificationList.children.length > 0;
+
+            // Update the existing empty-message behavior
+            emptyMessage.hidden = hasNotifications;
+
+            // Send the notification status to the homepage
+            if (window.parent !== window) {
+                window.parent.postMessage(
+                    {
+                        type: 'notification-status',
+                        hasNotifications: hasNotifications
+                    },
+                    window.location.origin
+                );
+            }
         }
 
         function openPost(postId) {
